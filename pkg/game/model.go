@@ -18,6 +18,10 @@ type Card struct {
 	Number string
 }
 
+func (card *Card) Key() string {
+	return fmt.Sprintf("%s-%s", card.Suit, card.Number)
+}
+
 func Cards(deck Deck) []*Card {
 	cards := []*Card{}
 	for _, suit := range deck.Suits() {
@@ -51,7 +55,7 @@ type StandardDeck struct {
 }
 
 func NewStandardDeck() *StandardDeck {
-	numbers := []string{"2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "K", "Q", "A"}
+	numbers := []string{"2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"}
 	ratings := map[string]int{}
 	for i, num := range numbers {
 		ratings[num] = i
@@ -86,9 +90,11 @@ func (sd *StandardDeck) Compare(l string, r string) int {
 type RoundState int
 
 const (
-	RoundStateNothingDoneYet = iota
-	RoundStateCardsDealt     = iota
-	RoundStateWagersMade     = iota
+	RoundStateNothingDoneYet RoundState = iota
+	RoundStateCardsDealt     RoundState = iota
+	RoundStateWagersMade     RoundState = iota
+	RoundStateHandInProgress RoundState = iota
+	RoundStateFinished       RoundState = iota
 )
 
 func (r RoundState) String() string {
@@ -99,44 +105,39 @@ func (r RoundState) String() string {
 		return "RoundStateCardsDealt"
 	case RoundStateWagersMade:
 		return "RoundStateWagersMade"
+	case RoundStateHandInProgress:
+		return "RoundStateHandInProgress"
+	case RoundStateFinished:
+		return "RoundStateFinished"
 	}
 	panic(fmt.Errorf("invalid RoundState value: %d", r))
 }
 
+type PlayerCard struct {
+	Card     *Card
+	IsPlayed bool
+}
+
 type Round struct {
-	// Dealer must be in Players
-	Dealer         string
 	CardsPerPlayer int
 	Deck           Deck
 	// Players are ordered
 	PlayersOrder []string
-	Players      map[string][]*Card
+	Players      map[string]map[string]*PlayerCard
 	TrumpSuit    string
 	Wagers       map[string]int
 	WagerSum     int
+	Hands        []*Hand
 	//
 	State RoundState
 }
 
-func NewRound(dealer string, players []string, deck Deck, cardsPerPlayer int) (*Round, error) {
-	playersMap := map[string][]*Card{}
+func NewRound(players []string, deck Deck, cardsPerPlayer int) *Round {
+	playersMap := map[string]map[string]*PlayerCard{}
 	for _, player := range players {
-		if _, ok := playersMap[player]; ok {
-			return nil, errors.New(fmt.Sprintf("duplicate player name: %s", player))
-		}
-		playersMap[player] = []*Card{}
-	}
-	if _, ok := playersMap[dealer]; !ok {
-		return nil, errors.New(fmt.Sprintf("invalid dealer name %s, not found in %+v", dealer, players))
-	}
-	// 1 = for the trump suit
-	cardsNeeded := cardsPerPlayer*len(players) + 1
-	cardsAvailable := len(Cards(deck))
-	if cardsNeeded > cardsAvailable {
-		return nil, errors.New(fmt.Sprintf("need %d cards for %d players, a total of %d -- more than the %d available", cardsPerPlayer, len(players), cardsNeeded, cardsAvailable))
+		playersMap[player] = map[string]*PlayerCard{}
 	}
 	return &Round{
-		Dealer:         dealer,
 		CardsPerPlayer: cardsPerPlayer,
 		Deck:           deck,
 		PlayersOrder:   players,
@@ -144,8 +145,9 @@ func NewRound(dealer string, players []string, deck Deck, cardsPerPlayer int) (*
 		TrumpSuit:      "",
 		Wagers:         map[string]int{},
 		WagerSum:       0,
+		Hands:          []*Hand{},
 		State:          RoundStateNothingDoneYet,
-	}, nil
+	}
 }
 
 func (round *Round) Deal() error {
@@ -156,7 +158,7 @@ func (round *Round) Deal() error {
 	j := 0
 	for i := 0; i < round.CardsPerPlayer; i++ {
 		for _, player := range round.PlayersOrder {
-			round.Players[player] = append(round.Players[player], cards[j])
+			round.Players[player][cards[j].Key()] = &PlayerCard{Card: cards[j], IsPlayed: false}
 			j++
 		}
 	}
@@ -166,24 +168,90 @@ func (round *Round) Deal() error {
 }
 
 func (round *Round) Wager(player string, hands int) error {
+	if round.State != RoundStateCardsDealt {
+		return errors.New(fmt.Sprintf("expected state RoundStateCardsDealt for wager, found %s", round.State.String()))
+	}
 	if hands > round.CardsPerPlayer {
 		return errors.New(fmt.Sprintf("%d cards per player, but wager was %d", round.CardsPerPlayer, hands))
 	}
-	if _, ok := round.Players[player]; !ok {
-		return errors.New(fmt.Sprintf("unrecognized player name <%s>", player))
-	}
-	if _, ok := round.Wagers[player]; ok {
-		return errors.New(fmt.Sprintf("player <%s> has already made a wager", player))
+	// players must make wagers in order
+	nextPlayer := round.PlayersOrder[len(round.Wagers)]
+	if nextPlayer != player {
+		return errors.New(fmt.Sprintf("it is player %s's turn to wager, but got %s", nextPlayer, player))
 	}
 	playerCount, wagerCount := len(round.PlayersOrder), len(round.Wagers)
-	// on the last (i.e. dealer) wager?  then can't add up to the number of cards
-	if (playerCount == wagerCount+1) && (hands+round.WagerSum == round.CardsPerPlayer) {
-		// TODO distinguish between violations of game rules (like this) and something else unexpected going
-		// wrong -- like above, where a player has already made a wager or where a player is unrecognized
-		return errors.New(fmt.Sprintf("dealer's wager can't add up to %d (had %d already, wagered %d)", round.CardsPerPlayer, round.WagerSum, hands))
+	// on the last (i.e. dealer) wager?
+	if playerCount == wagerCount+1 {
+		// then can't add up to the number of cards
+		if hands+round.WagerSum == round.CardsPerPlayer {
+			// TODO distinguish between violations of game rules (like this) and something else unexpected going
+			// wrong -- like above, where a player has already made a wager or where a player is unrecognized
+			return errors.New(fmt.Sprintf("dealer's wager can't add up to %d (had %d already, wagered %d)", round.CardsPerPlayer, round.WagerSum, hands))
+		}
+		round.State = RoundStateWagersMade
 	}
 	round.Wagers[player] = hands
 	round.WagerSum += hands
+	return nil
+}
+
+func (round *Round) StartHand() error {
+	if round.State != RoundStateWagersMade {
+		return errors.New(fmt.Sprintf("expected state RoundStateWagersMade for starting a hand, found %s", round.State.String()))
+	}
+	round.State = RoundStateHandInProgress
+	round.Hands = append(round.Hands, NewHand(round.Deck, round.TrumpSuit))
+	return nil
+}
+
+func (round *Round) CurrentHand() (*Hand, error) {
+	if round.State != RoundStateHandInProgress {
+		return nil, errors.New(fmt.Sprintf("expected state RoundStateHandInProgress, found %s", round.State.String()))
+	}
+	return round.Hands[len(round.Hands)-1], nil
+}
+
+func (round *Round) playerHasCard(player string, card *Card) bool {
+	_, ok := round.Players[player][card.Key()]
+	return ok
+}
+
+func (round *Round) PlayCard(player string, card *Card) error {
+	hand, err := round.CurrentHand()
+	if err != nil {
+		return err
+	}
+	// is this the right next player?
+	nextPlayer := round.PlayersOrder[len(hand.CardsPlayed)]
+	if nextPlayer != player {
+		return errors.New(fmt.Sprintf("expected player %s, got %s", nextPlayer, player))
+	}
+	// is this a card they have?
+	if !round.playerHasCard(player, card) {
+		return errors.New(fmt.Sprintf("player %s can't play card %+v: does not have it", player, card))
+	}
+	// have they already played this card?
+	if round.Players[player][card.Key()].IsPlayed {
+		return errors.New(fmt.Sprintf("player %s can't play card %+v: already played", player, card))
+	}
+	//is this a card they can legally play?
+	if len(hand.CardsPlayed) > 0 {
+		// must follow suit if possible, otherwise anything goes
+		mustFollowSuit := false
+		for _, pc := range round.Players[player] {
+			if !pc.IsPlayed && pc.Card.Suit == hand.Suit {
+				mustFollowSuit = true
+				break
+			}
+		}
+		if mustFollowSuit && card.Suit != hand.Suit {
+			return errors.New(fmt.Sprintf("player %s must follow suit %s, but did not", player, hand.Suit))
+		}
+	}
+	hand.PlayCard(player, card)
+	if len(hand.CardsPlayed) == len(round.PlayersOrder) {
+		round.State = RoundStateFinished
+	}
 	return nil
 }
 
@@ -207,11 +275,7 @@ func NewHand(deck Deck, trumpSuit string) *Hand {
 	}
 }
 
-func (hand *Hand) PlayCard(player string, card *Card) error {
-	// TODO check to make sure same card hasn't already been played
-	// TODO check to make sure same player hasn't already played
-	// TODO check to make sure players play in right order
-	// TODO need to know all the card's in `player`s hand in order to make sure they followed suit appropriately
+func (hand *Hand) PlayCard(player string, card *Card) {
 	cardsPlayed := len(hand.CardsPlayed)
 	hand.CardsPlayed[player] = card
 	if cardsPlayed == 0 {
@@ -251,5 +315,4 @@ func (hand *Hand) PlayCard(player string, card *Card) error {
 			// nothing to do
 		}
 	}
-	return nil
 }

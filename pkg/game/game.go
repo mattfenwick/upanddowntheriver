@@ -3,109 +3,183 @@ package game
 import (
 	"fmt"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
-type Action struct {
-	Name  string
-	Apply func() error
+type GameState int
+
+const (
+	GameStateSetup           GameState = iota
+	GameStateRoundInProgress GameState = iota
+)
+
+func (g GameState) String() string {
+	switch g {
+	case GameStateSetup:
+		return "GameStateSetup"
+	case GameStateRoundInProgress:
+		return "GameStateRoundInProgress"
+	}
+	panic(fmt.Errorf("invalid GameState value: %d", g))
 }
 
 type Game struct {
-	Players map[string]bool
-	Rounds  []*Round
-	Stop    <-chan struct{}
-	Actions chan *Action
+	Players        []string
+	PlayersSet     map[string]bool
+	Deck           Deck
+	CardsPerPlayer int
+	Rounds         []*Round
+	State          GameState
 }
 
-func NewGame(stop <-chan struct{}) *Game {
+func NewGame() *Game {
 	game := &Game{
-		Players: nil,
-		Rounds:  nil,
-		Stop:    stop,
-		Actions: make(chan *Action),
+		Players:        []string{},
+		PlayersSet:     map[string]bool{},
+		Deck:           NewStandardDeck(),
+		CardsPerPlayer: 1,
+		Rounds:         nil,
+		State:          GameStateSetup,
 	}
-	go func() {
-		game.startActionProcessor()
-	}()
 	return game
-}
-
-func (game *Game) startActionProcessor() {
-	for {
-		var action *Action
-		select {
-		case <-game.Stop:
-			break
-		case action = <-game.Actions:
-		}
-
-		err := action.Apply()
-		if err != nil {
-			log.Errorf("unable to process action type %s: %s", action.Name, err)
-		} else {
-			log.Infof("successfully processed action type %s", action.Name)
-		}
-	}
 }
 
 // mutators
 
-func (game *Game) AddPlayer(player string) error {
-	done := make(chan error)
-	game.Actions <- &Action{"addPlayer", func() error {
-		var err error
-		if game.Players[player] {
-			err = errors.New(fmt.Sprintf("can't add player %s, already present", player))
-		} else {
-			game.Players[player] = true
+func (game *Game) addPlayer(player string) error {
+	if game.State != GameStateSetup {
+		return errors.New(fmt.Sprintf("can't add player, in state %s", game.State.String()))
+	} else if game.PlayersSet[player] {
+		return errors.New(fmt.Sprintf("can't add player %s, already present", player))
+	} else {
+		game.Players = append(game.Players, player)
+		game.PlayersSet[player] = true
+		return nil
+	}
+}
+
+func (game *Game) removePlayer(player string) error {
+	if game.State != GameStateSetup {
+		return errors.New(fmt.Sprintf("can't remove player, in state %s", game.State.String()))
+	} else if !game.PlayersSet[player] {
+		return errors.New(fmt.Sprintf("can't remove player %s, not present", player))
+	} else {
+		delete(game.PlayersSet, player)
+		players := []string{}
+		for _, player := range game.Players {
+			if _, ok := game.PlayersSet[player]; ok {
+				players = append(players, player)
+			}
 		}
-		go func() {
-			done <- err
-		}()
+		game.Players = players
+		return nil
+	}
+}
+
+func (game *Game) startRound() error {
+	if game.State != GameStateSetup {
+		return errors.New(fmt.Sprintf("can't start round, in state %s", game.State.String()))
+	}
+	playerCount := len(game.Players)
+	if playerCount < 2 {
+		return errors.New(fmt.Sprintf("can't start game with fewer than 2 players, found %d", playerCount))
+	}
+	players := append([]string{}, game.Players...)
+	game.Rounds = append(game.Rounds, NewRound(players, game.Deck, game.CardsPerPlayer))
+	game.State = GameStateRoundInProgress
+	return nil
+}
+
+func (game *Game) finishRound() error {
+	if game.State != GameStateRoundInProgress {
+		return errors.New(fmt.Sprintf("can't finish round, in state %s", game.State.String()))
+	} else {
+		// TODO any other cleanup?
+		game.State = GameStateSetup
+		return nil
+	}
+}
+
+func (game *Game) currentRound() (*Round, error) {
+	if game.State != GameStateRoundInProgress {
+		return nil, errors.New(fmt.Sprintf("can't get current round, game in state %s", game.State.String()))
+	}
+	return game.Rounds[len(game.Rounds)-1], nil
+}
+
+func (game *Game) makeWager(player string, hands int) error {
+	round, err := game.currentRound()
+	if err != nil {
 		return err
-	}}
-	return <-done
+	}
+	return round.Wager(player, hands)
 }
 
-func (game *Game) RemovePlayer(player string) {
-	// TODO
-}
-
-func (game *Game) StartRound() {
-	// TODO
-}
-
-func (game *Game) Deal() {
-	// TODO
-}
-
-func (game *Game) MakeWager(player string, hands int) {
-	// TODO
-}
-
-func (game *Game) PlayCard(player string, card *Card) {
-	// TODO
+func (game *Game) playCard(player string, card *Card) error {
+	round, err := game.currentRound()
+	if err != nil {
+		return err
+	}
+	return round.PlayCard(player, card)
 }
 
 // getters
 
-func (game *Game) GetGameModel() {
-	// TODO players
-}
-
-func (game *Game) GetRoundModel() {
-	// TODO player order, dealer, trump suit, hands, wagers
-}
-
-func (game *Game) GetHandModel() {
-	// TODO suit, cards played, leader, leader card
-}
-
-func (game *Game) GetHandResults() {
-	// TODO winner, cards played
-}
-
-func (game *Game) GetRoundResults() {
-	// TODO wagers, winners, losers
-}
+//type GameModel struct {
+//	Players []string
+//}
+//
+//func (game *Game) GetGameModel() *GameModel {
+//	done := make(chan *GameModel)
+//	game.actions <- &Action{
+//		Name: "getGameModel",
+//		Apply: func() error {
+//			players := []string{}
+//			for player := range game.Players {
+//				players = append(players, player)
+//			}
+//			done <- &GameModel{Players: players}
+//			return nil
+//		},
+//	}
+//	return <-done
+//}
+//
+//type RoundModel struct {
+//	// PlayerOrder implies Dealer -- last player
+//	PlayerOrder []string
+//	TrumpSuit   string
+//	Wagers      map[string]int
+//	Hands       []*HandModel
+//	CurrentHand *HandModel
+//}
+//
+//func (game *Game) GetRoundModel() {
+//	// TODO player order, dealer, trump suit, hands, wagers
+//}
+//
+//type HandModel struct {
+//	Suit        string
+//	CardsPlayed map[string]*Card
+//	Leader      string
+//	LeaderCard  *Card
+//	NextPlayer  string
+//	Hand
+//}
+//
+//func (game *Game) GetHandModel() {
+//	// TODO suit, cards played, leader, leader card
+//}
+//
+//type HandResults struct {
+//	CardsPlayed map[string]*Card
+//	Winners     []string
+//	Losers      []string
+//}
+//
+//func (game *Game) GetHandResults() {
+//	// TODO winner, cards played
+//}
+//
+//func (game *Game) GetRoundResults() {
+//	// TODO wagers, winners, losers
+//}
