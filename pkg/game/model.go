@@ -3,89 +3,7 @@ package game
 import (
 	"errors"
 	"fmt"
-	"math/rand"
-	"time"
 )
-
-type Deck interface {
-	Suits() []string
-	Numbers() []string
-	Compare(l string, r string) int
-}
-
-type Card struct {
-	Suit   string
-	Number string
-}
-
-func (card *Card) Key() string {
-	return fmt.Sprintf("%s-%s", card.Suit, card.Number)
-}
-
-func Cards(deck Deck) []*Card {
-	cards := []*Card{}
-	for _, suit := range deck.Suits() {
-		for _, num := range deck.Numbers() {
-			cards = append(cards, &Card{
-				Suit:   suit,
-				Number: num,
-			})
-		}
-	}
-	return cards
-}
-
-func Shuffle(cards []*Card) []*Card {
-	cardsCopy := make([]*Card, len(cards))
-	for i, c := range cards {
-		cardsCopy[i] = c
-	}
-	swap := func(i int, j int) {
-		cardsCopy[i], cardsCopy[j] = cardsCopy[j], cardsCopy[i]
-	}
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(cardsCopy), swap)
-	return cardsCopy
-}
-
-type StandardDeck struct {
-	DeckSuits     []string
-	DeckNumbers   []string
-	NumberRatings map[string]int
-}
-
-func NewStandardDeck() *StandardDeck {
-	numbers := []string{"2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"}
-	ratings := map[string]int{}
-	for i, num := range numbers {
-		ratings[num] = i
-	}
-	return &StandardDeck{
-		DeckSuits:     []string{"Clubs", "Diamonds", "Hearts", "Spades"},
-		DeckNumbers:   numbers,
-		NumberRatings: ratings,
-	}
-}
-
-func (sd *StandardDeck) Suits() []string {
-	return sd.DeckSuits
-}
-
-func (sd *StandardDeck) Numbers() []string {
-	return sd.DeckNumbers
-}
-
-func (sd *StandardDeck) Compare(l string, r string) int {
-	lRating, ok := sd.NumberRatings[l]
-	if !ok {
-		panic(fmt.Sprintf("invalid value %s, expected one of %+v", l, sd.DeckNumbers))
-	}
-	rRating, ok := sd.NumberRatings[r]
-	if !ok {
-		panic(fmt.Sprintf("invalid value %s, expected one of %+v", r, sd.DeckNumbers))
-	}
-	return lRating - rRating
-}
 
 type RoundState int
 
@@ -154,7 +72,7 @@ func (round *Round) Deal() error {
 	if round.State != RoundStateNothingDoneYet {
 		return errors.New(fmt.Sprintf("expected state RoundStateNothingDoneYet for deal, found %s", round.State.String()))
 	}
-	cards := Shuffle(Cards(round.Deck))
+	cards := round.Deck.Shuffle()
 	j := 0
 	for i := 0; i < round.CardsPerPlayer; i++ {
 		for _, player := range round.PlayersOrder {
@@ -200,7 +118,25 @@ func (round *Round) StartHand() error {
 		return errors.New(fmt.Sprintf("expected state RoundStateWagersMade for starting a hand, found %s", round.State.String()))
 	}
 	round.State = RoundStateHandInProgress
-	round.Hands = append(round.Hands, NewHand(round.Deck, round.TrumpSuit))
+	var players []string
+	if len(round.Hands) == 0 {
+		// first hand?  start with the first player
+		players = append([]string{}, round.PlayersOrder...)
+	} else {
+		// not the first hand?  start with the previous winner, otherwise continue in the same order
+		prevHand := round.Hands[len(round.Hands)-1]
+		var i int
+		var player string
+		for i, player = range round.PlayersOrder {
+			if player == prevHand.Leader {
+				break
+			}
+		}
+		for j := 0; j < len(round.PlayersOrder); i, j = i+1, j+1 {
+			players = append(players, round.PlayersOrder[i%len(round.PlayersOrder)])
+		}
+	}
+	round.Hands = append(round.Hands, NewHand(round.Deck, round.TrumpSuit, players))
 	return nil
 }
 
@@ -222,7 +158,7 @@ func (round *Round) PlayCard(player string, card *Card) error {
 		return err
 	}
 	// is this the right next player?
-	nextPlayer := round.PlayersOrder[len(hand.CardsPlayed)]
+	nextPlayer := hand.PlayersOrder[len(hand.CardsPlayed)]
 	if nextPlayer != player {
 		return errors.New(fmt.Sprintf("expected player %s, got %s", nextPlayer, player))
 	}
@@ -249,29 +185,40 @@ func (round *Round) PlayCard(player string, card *Card) error {
 		}
 	}
 	hand.PlayCard(player, card)
+	round.Players[player][card.Key()].IsPlayed = true
+
+	// have we finished the hand?
 	if len(hand.CardsPlayed) == len(round.PlayersOrder) {
-		round.State = RoundStateFinished
+		// have we finished the round?
+		if len(round.Hands) == round.CardsPerPlayer {
+			round.State = RoundStateFinished
+		} else {
+			round.State = RoundStateWagersMade
+		}
 	}
+
 	return nil
 }
 
 type Hand struct {
-	Deck        Deck
-	TrumpSuit   string
-	CardsPlayed map[string]*Card
-	Suit        string
-	Leader      string
-	LeaderCard  *Card
+	Deck         Deck
+	TrumpSuit    string
+	CardsPlayed  map[string]*Card
+	PlayersOrder []string
+	Suit         string
+	Leader       string
+	LeaderCard   *Card
 }
 
-func NewHand(deck Deck, trumpSuit string) *Hand {
+func NewHand(deck Deck, trumpSuit string, playersOrder []string) *Hand {
 	return &Hand{
-		Deck:        deck,
-		TrumpSuit:   trumpSuit,
-		CardsPlayed: map[string]*Card{},
-		Suit:        "",
-		Leader:      "",
-		LeaderCard:  nil,
+		Deck:         deck,
+		TrumpSuit:    trumpSuit,
+		CardsPlayed:  map[string]*Card{},
+		PlayersOrder: playersOrder,
+		Suit:         "",
+		Leader:       "",
+		LeaderCard:   nil,
 	}
 }
 
