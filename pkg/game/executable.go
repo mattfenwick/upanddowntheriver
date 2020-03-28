@@ -3,7 +3,6 @@ package game
 import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 )
@@ -25,7 +24,11 @@ func Run(configPath string) {
 	prometheus.Unregister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	prometheus.Unregister(prometheus.NewGoCollector())
 
-	http.Handle("/metrics", promhttp.Handler())
+	stop := make(chan struct{})
+	game := NewGame()
+	gcw := NewGameConcurrencyWrapper(game, stop)
+
+	SetupHTTPServer(config.UIDirectory, gcw)
 
 	addr := fmt.Sprintf(":%d", config.Port)
 	log.Infof("serving on %s", addr)
@@ -33,11 +36,7 @@ func Run(configPath string) {
 		http.ListenAndServe(addr, nil)
 	}()
 
-	stop := make(chan struct{})
-	game := NewGame()
-	gcw := NewGameConcurrencyWrapper(game, stop)
-
-	log.Infof("instantiated game with concurrency wrapper: \n%s\n", gcw.GetJsonModel())
+	log.Infof("instantiated game with concurrency wrapper: \n%s\n", gcw.GetModel())
 
 	<-stop
 }

@@ -8,7 +8,6 @@ import (
 type RoundState int
 
 const (
-	RoundStateNothingDoneYet RoundState = iota
 	RoundStateCardsDealt     RoundState = iota
 	RoundStateWagersMade     RoundState = iota
 	RoundStateHandInProgress RoundState = iota
@@ -17,8 +16,6 @@ const (
 
 func (r RoundState) String() string {
 	switch r {
-	case RoundStateNothingDoneYet:
-		return "RoundStateNothingDoneYet"
 	case RoundStateCardsDealt:
 		return "RoundStateCardsDealt"
 	case RoundStateWagersMade:
@@ -29,6 +26,15 @@ func (r RoundState) String() string {
 		return "RoundStateFinished"
 	}
 	panic(fmt.Errorf("invalid RoundState value: %d", r))
+}
+
+func (r RoundState) MarshalJSON() ([]byte, error) {
+	jsonString := fmt.Sprintf(`"%s"`, r.String())
+	return []byte(jsonString), nil
+}
+
+func (r RoundState) MarshalText() (text []byte, err error) {
+	return []byte(r.String()), nil
 }
 
 type PlayerCard struct {
@@ -55,7 +61,7 @@ func NewRound(players []string, deck Deck, cardsPerPlayer int) *Round {
 	for _, player := range players {
 		playersMap[player] = map[string]*PlayerCard{}
 	}
-	return &Round{
+	round := &Round{
 		CardsPerPlayer: cardsPerPlayer,
 		Deck:           deck,
 		PlayersOrder:   players,
@@ -64,14 +70,13 @@ func NewRound(players []string, deck Deck, cardsPerPlayer int) *Round {
 		Wagers:         map[string]int{},
 		WagerSum:       0,
 		Hands:          []*Hand{},
-		State:          RoundStateNothingDoneYet,
+		State:          RoundStateCardsDealt,
 	}
+	round.deal()
+	return round
 }
 
-func (round *Round) Deal() error {
-	if round.State != RoundStateNothingDoneYet {
-		return errors.New(fmt.Sprintf("expected state RoundStateNothingDoneYet for deal, found %s", round.State.String()))
-	}
+func (round *Round) deal() {
 	cards := round.Deck.Shuffle()
 	j := 0
 	for i := 0; i < round.CardsPerPlayer; i++ {
@@ -81,8 +86,6 @@ func (round *Round) Deal() error {
 		}
 	}
 	round.TrumpSuit = cards[j].Suit
-	round.State = RoundStateCardsDealt
-	return nil
 }
 
 func (round *Round) Wager(player string, hands int) error {
@@ -198,68 +201,4 @@ func (round *Round) PlayCard(player string, card *Card) error {
 	}
 
 	return nil
-}
-
-type Hand struct {
-	Deck         Deck
-	TrumpSuit    string
-	CardsPlayed  map[string]*Card
-	PlayersOrder []string
-	Suit         string
-	Leader       string
-	LeaderCard   *Card
-}
-
-func NewHand(deck Deck, trumpSuit string, playersOrder []string) *Hand {
-	return &Hand{
-		Deck:         deck,
-		TrumpSuit:    trumpSuit,
-		CardsPlayed:  map[string]*Card{},
-		PlayersOrder: playersOrder,
-		Suit:         "",
-		Leader:       "",
-		LeaderCard:   nil,
-	}
-}
-
-func (hand *Hand) PlayCard(player string, card *Card) {
-	cardsPlayed := len(hand.CardsPlayed)
-	hand.CardsPlayed[player] = card
-	if cardsPlayed == 0 {
-		hand.Suit = card.Suit
-		hand.Leader = player
-		hand.LeaderCard = card
-	} else {
-		// which suit is better?  trump > following suit > something else
-		if card.Suit == hand.TrumpSuit && hand.LeaderCard.Suit == hand.TrumpSuit {
-			// 1. both trumps -- use numbers
-			if hand.Deck.Compare(hand.LeaderCard.Number, card.Number) < 0 {
-				hand.Leader = player
-				hand.LeaderCard = card
-			}
-		} else if card.Suit == hand.TrumpSuit && hand.LeaderCard.Suit != hand.TrumpSuit {
-			// 2. new card is a trump, old one isn't
-			hand.Leader = player
-			hand.LeaderCard = card
-		} else if card.Suit != hand.TrumpSuit && hand.LeaderCard.Suit == hand.TrumpSuit {
-			// 3. old card is a trump, new one isn't
-			// nothing to do
-		} else if card.Suit == hand.Suit && hand.LeaderCard.Suit == hand.Suit {
-			// 4. both following suit
-			if hand.Deck.Compare(hand.LeaderCard.Number, card.Number) < 0 {
-				hand.Leader = player
-				hand.LeaderCard = card
-			}
-		} else if card.Suit == hand.Suit && hand.LeaderCard.Suit != hand.Suit {
-			// 5. new card follows suit, old one doesn't
-			hand.Leader = player
-			hand.LeaderCard = card
-		} else if card.Suit != hand.Suit && hand.LeaderCard.Suit == hand.Suit {
-			// 6. old card follows suit, new one doesn't
-			// nothing to do
-		} else {
-			// 7. new card can't possibly be better
-			// nothing to do
-		}
-	}
 }

@@ -9,6 +9,8 @@ import (
 type Config struct {
 	LogLevel string
 
+	UIDirectory string
+
 	Port int
 }
 

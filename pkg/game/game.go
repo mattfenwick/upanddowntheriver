@@ -22,6 +22,15 @@ func (g GameState) String() string {
 	panic(fmt.Errorf("invalid GameState value: %d", g))
 }
 
+func (g GameState) MarshalJSON() ([]byte, error) {
+	jsonString := fmt.Sprintf(`"%s"`, g.String())
+	return []byte(jsonString), nil
+}
+
+func (g GameState) MarshalText() (text []byte, err error) {
+	return []byte(g.String()), nil
+}
+
 type Game struct {
 	Players        []string
 	PlayersSet     map[string]bool

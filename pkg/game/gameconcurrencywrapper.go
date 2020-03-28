@@ -115,10 +115,6 @@ func (gcw *GameConcurrencyWrapper) FinishRound() error {
 	return <-done
 }
 
-func (gcw *GameConcurrencyWrapper) Deal() {
-	// TODO
-}
-
 func (gcw *GameConcurrencyWrapper) MakeWager(player string, hands int) error {
 	done := make(chan error)
 	gcw.Actions <- &Action{"makeWager", func() error {
@@ -145,7 +141,7 @@ func (gcw *GameConcurrencyWrapper) PlayCard(player string, card *Card) error {
 
 // getters
 
-func (gcw *GameConcurrencyWrapper) GetJsonModel() string {
+func (gcw *GameConcurrencyWrapper) GetModel() string {
 	done := make(chan string)
 	gcw.Actions <- &Action{"getJsonModel", func() error {
 		bytes, err := json.MarshalIndent(gcw.Game, "", "  ")

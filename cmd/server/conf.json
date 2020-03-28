@@ -1,4 +1,5 @@
 {
   "LogLevel": "debug",
-  "Port": 5932
+  "Port": 5932,
+  "UIDirectory": "ui/"
 }
