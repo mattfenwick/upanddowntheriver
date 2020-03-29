@@ -1,6 +1,7 @@
 package game
 
 type Hand struct {
+	Guid         string
 	Deck         Deck
 	TrumpSuit    string
 	CardsPlayed  map[string]*Card
@@ -12,6 +13,7 @@ type Hand struct {
 
 func NewHand(deck Deck, trumpSuit string, playersOrder []string) *Hand {
 	return &Hand{
+		Guid:         NewGuid(),
 		Deck:         deck,
 		TrumpSuit:    trumpSuit,
 		CardsPlayed:  map[string]*Card{},

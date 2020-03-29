@@ -43,6 +43,7 @@ type PlayerCard struct {
 }
 
 type Round struct {
+	Guid           string
 	CardsPerPlayer int
 	Deck           Deck
 	// Players are ordered
@@ -62,6 +63,7 @@ func NewRound(players []string, deck Deck, cardsPerPlayer int) *Round {
 		playersMap[player] = map[string]*PlayerCard{}
 	}
 	round := &Round{
+		Guid:           NewGuid(),
 		CardsPerPlayer: cardsPerPlayer,
 		Deck:           deck,
 		PlayersOrder:   players,

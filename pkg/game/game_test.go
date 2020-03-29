@@ -84,21 +84,20 @@ func RunGameTests() {
 		deck := NewDeterministicShuffleDeck()
 
 		Describe("initialization", func() {
-			It("should have the right state", func() {
+			It("should have the right state and cards per player", func() {
 				round := NewRound(players, deck, 3)
-				Expect(round.State).To(Equal(RoundStateNothingDoneYet))
+				Expect(round.State).To(Equal(RoundStateCardsDealt))
 				Expect(round.CardsPerPlayer).To(Equal(3))
 			})
 
-			It("should have cards uninitialized", func() {
+			It("should have the right wagersum, wagers, cards, and hands", func() {
 				round := NewRound(players, deck, 3)
 				Expect(round.WagerSum).To(Equal(0))
 				Expect(round.PlayersOrder).To(Equal(players))
-				Expect(round.Players).To(Equal(map[string]map[string]*PlayerCard{
-					"player1": {},
-					"jimbo":   {},
-					"alfonso": {},
-				}))
+				Expect(round.Wagers).To(Equal(map[string]int{}))
+				for _, player := range round.PlayersOrder {
+					Expect(len(round.Players[player])).To(Equal(3))
+				}
 				Expect(round.Hands).To(Equal([]*Hand{}))
 			})
 		})
@@ -106,7 +105,6 @@ func RunGameTests() {
 		Describe("Deal", func() {
 			It("should deal the right number of cards", func() {
 				round := NewRound(players, deck, 5)
-				Expect(round.Deal()).Should(Succeed())
 
 				Expect(len(round.Players)).To(Equal(3))
 				Expect(round.State).To(Equal(RoundStateCardsDealt))
@@ -118,7 +116,6 @@ func RunGameTests() {
 
 			It("should not deal the same card multiple times", func() {
 				round := NewRound(players, deck, 17)
-				Expect(round.Deal()).Should(Succeed())
 
 				keys := map[string]bool{}
 				for _, cards := range round.Players {
@@ -134,7 +131,6 @@ func RunGameTests() {
 		Describe("Make wagers", func() {
 			It("Requires wagers to be made in the right order", func() {
 				round := NewRound(players, deck, 3)
-				Expect(round.Deal()).Should(Succeed())
 
 				// "jimbo" is in position 2 -- not good
 				Expect(round.Wager("jimbo", 2)).ToNot(BeNil())
@@ -145,7 +141,6 @@ func RunGameTests() {
 
 			It("Doesn't let the dealer (last player) make a wager for a total equal to the number of cards per player", func() {
 				round := NewRound(players, deck, 13)
-				Expect(round.Deal()).Should(Succeed())
 
 				Expect(round.Wager("player1", 7)).Should(Succeed())
 				Expect(len(round.Wagers)).To(Equal(1))
@@ -168,7 +163,6 @@ func RunGameTests() {
 
 			It("Doesn't allow wagers higher than the number of cards per player", func() {
 				round := NewRound(players, deck, 3)
-				Expect(round.Deal()).Should(Succeed())
 
 				Expect(round.Wager("player1", 4)).ToNot(BeNil())
 				Expect(len(round.Wagers)).To(Equal(0))
@@ -183,7 +177,6 @@ func RunGameTests() {
 
 			It("Finishes wagers after all players have wagered in turn", func() {
 				round := NewRound(players, deck, 5)
-				Expect(round.Deal()).Should(Succeed())
 
 				Expect(round.Wager("player1", 1)).Should(Succeed())
 				Expect(round.Wager("jimbo", 2)).Should(Succeed())
@@ -197,7 +190,6 @@ func RunGameTests() {
 
 		wageredRound := func() *Round {
 			round := NewRound(players, deck, 17)
-			round.Deal()
 
 			round.Wager("player1", 1)
 			round.Wager("jimbo", 2)
@@ -210,7 +202,6 @@ func RunGameTests() {
 
 		smallWageredRound := func() *Round {
 			round := NewRound(players, deck, 2)
-			round.Deal()
 
 			round.Wager("player1", 2)
 			round.Wager("jimbo", 1)
