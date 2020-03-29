@@ -1,7 +1,14 @@
+<!doctype html>
 <html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Up And Down The River</title>
+        <link href="./main.css" rel="stylesheet" type="text/css" />
+    </head>
     <body>
         <script src="./jquery-dev.js"></script>
         <script src="./main.js"></script>
+
         <div id="me" style="border: 1px dashed; padding: 8px; margin: 4px;">
             <div id="me-get-name">
                 What's your name?
@@ -10,17 +17,24 @@
             </div>
             <div id="me-show-name"></div>
         </div>
+
         <div id="game" style="border: 1px dashed; padding: 8px; margin: 4px;">
-            <ul id="game-players"></ul>
+            Who's in the game?
+            <table id="game-players"></table>
             Cards per player:
             <select id="game-cards-per-player">
             </select>
         </div>
+
         <div id="round" style="border: 1px dashed; padding: 8px; margin: 4px;">
             <button id="round-start">Start Round!</button>
+            <table id="round-wagers"></table>
+            <table id="round-cards"></table>
+            <button id="round-finish">Finish Round</button>
         </div>
-        <div id="hand" style="border: 1px dashed; padding: 8px; margin: 4px;">
 
+        <div id="hand" style="border: 1px dashed; padding: 8px; margin: 4px;">
+            <table id="hand-cards"></table>
         </div>
     </body>
 </html>

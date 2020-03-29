@@ -1,6 +1,23 @@
+'use strict';
+
 // (function ($) {
 
 $(document).ready(function() {
+
+    // util
+
+    function arrayEquals(a, b) {
+        if ( a.length != b.length ) {
+            return false;
+        }
+
+        for (let i = 0; i < a.length; ++i) {
+            if ( a[i] !== b[i] ) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     // network actions
 
@@ -34,20 +51,49 @@ $(document).ready(function() {
         console.log("fired off POST to /player");
     }
 
-    function postStartRound(cont) {
+    function deletePlayer(name, cont) {
         function f(data, status, _jqXHR) {
-            console.log("post /player response -- status " + status);
+            console.log("delete /player response -- status " + status);
             cont(status === 'success', data);
         }
-        $.post({
-            'url': '/TODO?',
+        $.ajax({
+            'url': '/player',
+            'type': 'DELETE',
             'data': JSON.stringify({'Player': name}),
             'dataType': 'json',
             'success': f,
             'error': f,
             'contentType': 'application/json'
         });
-        console.log("fired off /player call");
+        console.log("fired off DELETE to /player");
+    }
+
+    function postAction(payload, cont) {
+        function f(data, status, _jqXHR) {
+            console.log("post /action response -- status " + status);
+            cont(status === 'success', data);
+        }
+        $.post({
+            'url': '/action',
+            'data': JSON.stringify(payload),
+            'dataType': 'json',
+            'success': f,
+            'error': f,
+            'contentType': 'application/json'
+        });
+        console.log("fired off POST to /action");
+    }
+
+    function postStartRound(me, cont) {
+        postAction({'StartRound': {'Player': me}}, cont)
+    }
+
+    function postWager(me, hands, cont) {
+        postAction({'MakeWager': {'Player': me, 'Hands': hands}}, cont)
+    }
+
+    function postPlayCard(me, number, suit, cont) {
+        postAction({'PlayCard': {'Player': me, 'Card': {'Number': number, 'Suit': suit}}}, cont)
     }
 
     // model
@@ -58,6 +104,7 @@ $(document).ready(function() {
         this.me = "";
         this.players = [];
         this.listeners = {};
+        this.data = null;
     }
 
     Model.prototype.listen = function(key, action) {
@@ -75,16 +122,30 @@ $(document).ready(function() {
         });
     };
 
-    Model.prototype.setPlayers = function(players) {
-        console.log("settings players to " + JSON.stringify(players));
-        this.players = players;
-        this.notify("players");
+    Model.prototype.updateFromServer = function(ok, data) {
+        if ( !ok ) { return; }
+        this.data = data;
+        this.setPlayers(data.Players);
+        this.setRounds(data.Rounds);
     };
 
-    Model.prototype.updateFromServer = function(ok, data) {
-        if ( ok ) {
-            this.setPlayers(data.Players);
+    Model.prototype.setPlayers = function(players) {
+        console.log("settings players to " + JSON.stringify(players));
+        if ( !arrayEquals(this.players, players) ) {
+            this.players = players;
+            this.notify("players");
         }
+    };
+
+    Model.prototype.removePlayer = function(player) {
+        console.log(`removing player ${player}`);
+        let self = this;
+        deletePlayer(player, function (ok, data) {
+            if ( ok ) {
+                self.players = self.players.filter((p) => p !== player);
+                self.notify("players");
+            }
+        });
     };
 
     Model.prototype.join = function(name) {
@@ -97,18 +158,34 @@ $(document).ready(function() {
         });
     };
 
+    Model.prototype.setRounds = function(rounds) {
+
+    };
+
+    Model.prototype.startRound = function() {
+        let self = this;
+        postStartRound(this.me, function (ok, data) {
+            self.notify("roundState");
+            console.log(`start round: ${ok}`);
+        });
+    };
+
+    Model.prototype.makeWager = function(hands) {
+        postWager(this.me, hands, function() {
+            // TODO update ui to show that it's no longer "my" turn
+            console.log(`make wager: ${ok}`);
+        })
+    };
+
+    Model.prototype.currentRound = function() {
+        let rounds = this.data.Rounds[this.data.length - 1];
+    };
+
     let model = new Model();
 
     // views
 
     let me = $("#me");
-
-    let game = $("#game");
-    let gamePlayers = $("#game-players");
-    let gameCardsPerPlayer = $("#game-cards-per-player");
-
-    let round = $("#round");
-    let hand = $("#hand");
 
     function configSetName() {
         let name = model.me;
@@ -116,13 +193,23 @@ $(document).ready(function() {
         $("#me-get-name").hide();
     }
 
+    let game = $("#game");
+    let gamePlayers = $("#game-players");
+    let gameCardsPerPlayer = $("#game-cards-per-player");
+
     function gameSetPlayers() {
         // TODO kind of janky to call in to model instead of getting passed the data ... ?
         let names = model.players;
         //
         gamePlayers.empty();
         names.forEach(function(player) {
-            gamePlayers.append("<li>" + player + "</li>")
+            gamePlayers.append(`
+                <tr>
+                    <td>${player}</td>
+                    <td>
+                        <button class='remove-player' player='${player}'>Remove</button>
+                    </td>
+                </tr>`);
         });
 
         if ( names.length === 0 ) {
@@ -131,43 +218,67 @@ $(document).ready(function() {
         let maxCards = 52 / names.length;
         gameCardsPerPlayer.empty();
         for (let i = 1; i < maxCards; i++) {
-            gameCardsPerPlayer.append("<option value='" + i + "'>" + i + "</option>");
+            gameCardsPerPlayer.append(`<option value='${i}'>${i}</option>`);
         }
         // TODO use gameCardsPerPlayer.val(prevSelection) to not blow away the selection unless necessary
     }
 
-    // TODO these are sources, not sinks -- so maybe don't need these?
-    // although: deck and number of players determines cards per player max
-    // function gameSetCardsPerPlayer(count) {
-    //
-    // }
-    //
-    // function gameSetDeck(deckType) {
-    //     // TODO
-    // }
+    let round = $("#round");
+    let roundStartButton = $("#round-start");
+    let roundFinishButton = $("#round-finish");
+    let roundCards = $("#round-cards");
+    let roundWagers = $("#round-wagers");
 
-    function roundStart() {
-
+    function roundState() {
+        let round = model.currentRound();
+        switch (round.State) {
+            case "RoundStateCardsDealt":
+                roundStartButton.hide();
+                roundCards.show();
+                roundWagers.show();
+                break;
+            case "RoundStateWagersMade":
+                break;
+            case "RoundStateHandInProgress":
+                break;
+            case "RoundStateFinished":
+                roundFinishButton.show();
+                break;
+            default:
+                throw new Error(`invalid round state ${round.State}`);
+        }
+        // TODO what about after wrapping up a round, we now need to show the round-start button to kick
+        // the next round off?
     }
+
+    let hand = $("#hand");
 
     // tie user actions to model
 
-    $("#me-join").click(function join() {
+    $("#me-join").click(function () {
         console.log("me-join click");
         let name = $("#me-input-name").val();
         model.join(name);
     });
 
-    $("#round-start").click(function join() {
+    roundStartButton.click(function () {
         console.log("submit-name click");
         model.startRound();
     });
 
+    // can't use `click` because the elements might be ever-changing
+    $(document).on("click", ".remove-player", function() {
+    // $(".remove-player").click(function () {
+        let player = $(this).attr('player');
+        console.log("remove-player: ${player}");
+        model.removePlayer(player);
+    });
 
     // initialization: poll server for model, tie model to ui updates
 
     model.listen("players", gameSetPlayers);
     model.listen("me", configSetName);
+    model.listen("startRound", roundStart);
 
     function pollServer() {
         getModel((ok, data) => model.updateFromServer(ok, data));
