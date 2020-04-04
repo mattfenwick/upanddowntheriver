@@ -58,19 +58,21 @@ func (gcw *GameConcurrencyWrapper) SetDeck() error {
 }
 
 func (gcw *GameConcurrencyWrapper) SetCardsPerPlayer(count int) error {
-	//// 1 = for the trump suit
-	//cardsNeeded := cardsPerPlayer*len(players) + 1
-	//cardsAvailable := len(Cards(deck))
-	//if cardsNeeded > cardsAvailable {
-	//	return nil, errors.New(fmt.Sprintf("need %d cards for %d players, a total of %d -- more than the %d available", cardsPerPlayer, len(players), cardsNeeded, cardsAvailable))
-	//}
-	return errors.New("TODO")
+	done := make(chan error)
+	gcw.Actions <- &Action{"setCardsPerPlayer", func() error {
+		err := gcw.Game.setCardsPerPlayer(count)
+		go func() {
+			done <- err
+		}()
+		return err
+	}}
+	return <-done
 }
 
-func (gcw *GameConcurrencyWrapper) AddPlayer(player string) error {
+func (gcw *GameConcurrencyWrapper) Join(player string) error {
 	done := make(chan error)
-	gcw.Actions <- &Action{"addPlayer", func() error {
-		err := gcw.Game.addPlayer(player)
+	gcw.Actions <- &Action{"join", func() error {
+		err := gcw.Game.join(player)
 		go func() {
 			done <- err
 		}()
@@ -95,6 +97,18 @@ func (gcw *GameConcurrencyWrapper) StartRound() error {
 	done := make(chan error)
 	gcw.Actions <- &Action{"startRound", func() error {
 		err := gcw.Game.startRound()
+		go func() {
+			done <- err
+		}()
+		return err
+	}}
+	return <-done
+}
+
+func (gcw *GameConcurrencyWrapper) StartHand() error {
+	done := make(chan error)
+	gcw.Actions <- &Action{"startHand", func() error {
+		err := gcw.Game.startHand()
 		go func() {
 			done <- err
 		}()
@@ -154,6 +168,19 @@ func (gcw *GameConcurrencyWrapper) GetModel() string {
 		return nil
 	}}
 	return <-done
+}
+
+func (gcw *GameConcurrencyWrapper) GetPlayerModel(player string) (*PlayerModel, error) {
+	done := make(chan struct{})
+	var pm *PlayerModel
+	var err error
+	gcw.Actions <- &Action{"getJsonModel", func() error {
+		pm, err = gcw.Game.playerModel(player)
+		close(done)
+		return nil
+	}}
+	<-done
+	return pm, err
 }
 
 //type GameModel struct {

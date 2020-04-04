@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	"sort"
 )
 
 type GameState int
@@ -36,7 +37,8 @@ type Game struct {
 	PlayersSet     map[string]bool
 	Deck           Deck
 	CardsPerPlayer int
-	Rounds         []*Round
+	FinishedRounds []*Round
+	CurrentRound   *Round
 	State          GameState
 }
 
@@ -46,7 +48,8 @@ func NewGame() *Game {
 		PlayersSet:     map[string]bool{},
 		Deck:           NewStandardDeck(),
 		CardsPerPlayer: 1,
-		Rounds:         nil,
+		FinishedRounds: []*Round{},
+		CurrentRound:   nil,
 		State:          GameStateSetup,
 	}
 	return game
@@ -56,14 +59,29 @@ func NewGame() *Game {
 
 func (game *Game) addPlayer(player string) error {
 	if game.State != GameStateSetup {
-		return errors.New(fmt.Sprintf("can't add player, in state %s", game.State.String()))
+		return errors.New(fmt.Sprintf("can't add player %s, in state %s", player, game.State.String()))
 	} else if game.PlayersSet[player] {
 		return errors.New(fmt.Sprintf("can't add player %s, already present", player))
 	} else {
 		game.Players = append(game.Players, player)
 		game.PlayersSet[player] = true
+		maxCardsPerPlayer := len(Cards(game.Deck)) / len(game.Players)
+		if game.CardsPerPlayer > maxCardsPerPlayer {
+			game.CardsPerPlayer = maxCardsPerPlayer
+		}
 		return nil
 	}
+}
+
+func (game *Game) join(player string) error {
+	if game.State != GameStateSetup {
+		return errors.New(fmt.Sprintf("can't join as %s, in state %s", player, game.State.String()))
+	}
+	// if player's already in the game, nothing to do!
+	if game.PlayersSet[player] {
+		return nil
+	}
+	return game.addPlayer(player)
 }
 
 func (game *Game) removePlayer(player string) error {
@@ -84,6 +102,15 @@ func (game *Game) removePlayer(player string) error {
 	}
 }
 
+func (game *Game) setCardsPerPlayer(count int) error {
+	maxCardsPerPlayer := len(Cards(game.Deck)) / len(game.Players)
+	if count > maxCardsPerPlayer {
+		return errors.New(fmt.Sprintf("requested cardsPerPlayer of %d, which is greater than the maxCardsPerPlayer of %d", count, maxCardsPerPlayer))
+	}
+	game.CardsPerPlayer = count
+	return nil
+}
+
 func (game *Game) startRound() error {
 	if game.State != GameStateSetup {
 		return errors.New(fmt.Sprintf("can't start round, in state %s", game.State.String()))
@@ -93,45 +120,230 @@ func (game *Game) startRound() error {
 		return errors.New(fmt.Sprintf("can't start game with fewer than 2 players, found %d", playerCount))
 	}
 	players := append([]string{}, game.Players...)
-	game.Rounds = append(game.Rounds, NewRound(players, game.Deck, game.CardsPerPlayer))
+	game.CurrentRound = NewRound(players, game.Deck, game.CardsPerPlayer)
 	game.State = GameStateRoundInProgress
 	return nil
+}
+
+func (game *Game) startHand() error {
+	if game.State != GameStateRoundInProgress {
+		return errors.New(fmt.Sprintf("can't start hand, in state %s", game.State.String()))
+	}
+	return game.CurrentRound.StartHand()
 }
 
 func (game *Game) finishRound() error {
 	if game.State != GameStateRoundInProgress {
 		return errors.New(fmt.Sprintf("can't finish round, in state %s", game.State.String()))
 	} else {
-		// TODO any other cleanup?
+		game.FinishedRounds = append(game.FinishedRounds, game.CurrentRound)
+		game.CurrentRound = nil
 		game.State = GameStateSetup
 		return nil
 	}
 }
 
-func (game *Game) currentRound() (*Round, error) {
-	if game.State != GameStateRoundInProgress {
-		return nil, errors.New(fmt.Sprintf("can't get current round, game in state %s", game.State.String()))
-	}
-	return game.Rounds[len(game.Rounds)-1], nil
-}
-
 func (game *Game) makeWager(player string, hands int) error {
-	round, err := game.currentRound()
-	if err != nil {
-		return err
+	if game.State != GameStateRoundInProgress {
+		return errors.New(fmt.Sprintf("can't get current round, game in state %s", game.State.String()))
 	}
-	return round.Wager(player, hands)
+	return game.CurrentRound.Wager(player, hands)
 }
 
 func (game *Game) playCard(player string, card *Card) error {
-	round, err := game.currentRound()
-	if err != nil {
-		return err
+	if game.State != GameStateRoundInProgress {
+		return errors.New(fmt.Sprintf("can't get current round, game in state %s", game.State.String()))
 	}
-	return round.PlayCard(player, card)
+	return game.CurrentRound.PlayCard(player, card)
 }
 
 // getters
+
+type PlayerState int
+
+const (
+	PlayerStateGameWaitingForPlayers PlayerState = iota
+	PlayerStateGameReady             PlayerState = iota
+	PlayerStateRoundWagerTurn        PlayerState = iota
+	PlayerStateRoundHandReady        PlayerState = iota
+	PlayerStateHandPlayTurn          PlayerState = iota
+	PlayerStateRoundFinished         PlayerState = iota
+)
+
+func (p PlayerState) JSONString() string {
+	switch p {
+	case PlayerStateGameWaitingForPlayers:
+		return "WaitingForPlayers"
+	//case PlayerStateGameReady:
+	//	return "Ready"
+	case PlayerStateRoundWagerTurn:
+		return "RoundWagerTurn"
+	case PlayerStateRoundHandReady:
+		return "RoundHandReady"
+	case PlayerStateHandPlayTurn:
+		return "HandPlayTurn"
+	case PlayerStateRoundFinished:
+		return "RoundFinished"
+	}
+	panic(fmt.Errorf("invalid PlayerState value: %d", p))
+}
+
+func (p PlayerState) MarshalJSON() ([]byte, error) {
+	jsonString := fmt.Sprintf(`"%s"`, p.JSONString())
+	return []byte(jsonString), nil
+}
+
+func (p PlayerState) MarshalText() (text []byte, err error) {
+	return []byte(p.JSONString()), nil
+}
+
+type PlayerGame struct {
+	Players        []string
+	CardsPerPlayer int
+}
+
+type PlayedCard struct {
+	Player string
+	Card   *Card
+}
+
+type PlayerHand struct {
+	Cards       []*Card
+	Suit        string
+	Leader      string
+	LeaderCard  *Card
+	CardsPlayed []*PlayedCard
+	NextPlayer  string
+}
+
+type PlayerWager struct {
+	Player   string
+	Count    *int
+	HandsWon *int
+}
+
+type PlayerRound struct {
+	Cards           []*Card
+	Wagers          []*PlayerWager
+	TrumpSuit       string
+	NextWagerPlayer string
+	WagerSum        int
+}
+
+type PlayerModel struct {
+	Me    string
+	State PlayerState
+	Game  *PlayerGame
+	Round *PlayerRound
+	Hand  *PlayerHand
+}
+
+func (game *Game) playerModel(player string) (*PlayerModel, error) {
+	if _, ok := game.PlayersSet[player]; !ok {
+		return nil, errors.New(fmt.Sprintf("player %s not found", player))
+	}
+
+	var state PlayerState
+	var round *PlayerRound
+	var hand *PlayerHand
+	switch game.State {
+	case GameStateSetup:
+		state = PlayerStateGameWaitingForPlayers
+		break
+	case GameStateRoundInProgress:
+		cards := []*Card{}
+		for _, pc := range game.CurrentRound.Players[player] {
+			cards = append(cards, pc.Card)
+		}
+		// let's sort the cards numerically ascending
+		sort.Slice(cards, func(i, j int) bool {
+			return game.Deck.Compare(cards[i].Number, cards[j].Number) < 0
+		})
+		playerWins := map[string]int{}
+		for _, hand := range game.CurrentRound.FinishedHands {
+			if _, ok := playerWins[hand.Leader]; !ok {
+				playerWins[hand.Leader] = 0
+			}
+			playerWins[hand.Leader]++
+		}
+		wagers := []*PlayerWager{}
+		for _, p := range game.CurrentRound.PlayersOrder {
+			var wager *int
+			count, ok := game.CurrentRound.Wagers[p]
+			if ok {
+				wager = &count
+			}
+			var handsWon *int
+			if won, ok := playerWins[p]; ok {
+				handsWon = &won
+			}
+			wagers = append(wagers, &PlayerWager{
+				Player:   p,
+				Count:    wager,
+				HandsWon: handsWon,
+			})
+		}
+		round = &PlayerRound{
+			Cards:           cards,
+			Wagers:          wagers,
+			TrumpSuit:       game.CurrentRound.TrumpSuit,
+			NextWagerPlayer: "",
+			WagerSum:        game.CurrentRound.WagerSum,
+		}
+		for _, player := range game.CurrentRound.PlayersOrder {
+			if _, ok := game.CurrentRound.Wagers[player]; !ok {
+				round.NextWagerPlayer = player
+				break
+			}
+		}
+		switch game.CurrentRound.State {
+		case RoundStateCardsDealt:
+			state = PlayerStateRoundWagerTurn
+			break
+		case RoundStateWagersMade:
+			state = PlayerStateRoundHandReady
+			break
+		case RoundStateHandInProgress:
+			state = PlayerStateHandPlayTurn
+			ch := game.CurrentRound.CurrentHand
+			cardsPlayed := []*PlayedCard{}
+			nextPlayer := ""
+			for _, p := range ch.PlayersOrder {
+				pc := &PlayedCard{Player: p, Card: nil}
+				card, ok := ch.CardsPlayed[p]
+				if ok {
+					pc.Card = card
+				} else if !ok && nextPlayer == "" {
+					nextPlayer = p
+				}
+				cardsPlayed = append(cardsPlayed, pc)
+			}
+			hand = &PlayerHand{
+				Cards:       cards,
+				Suit:        ch.Suit,
+				Leader:      ch.Leader,
+				LeaderCard:  ch.LeaderCard,
+				CardsPlayed: cardsPlayed,
+				NextPlayer:  nextPlayer,
+			}
+			break
+		case RoundStateFinished:
+			state = PlayerStateRoundFinished
+			break
+		}
+	}
+	model := &PlayerModel{
+		Me:    player,
+		State: state,
+		Game: &PlayerGame{
+			Players:        game.Players,
+			CardsPerPlayer: game.CardsPerPlayer,
+		},
+		Round: round,
+		Hand:  hand,
+	}
+	return model, nil
+}
 
 //type GameModel struct {
 //	Players []string

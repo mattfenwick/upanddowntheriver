@@ -47,12 +47,13 @@ type Round struct {
 	CardsPerPlayer int
 	Deck           Deck
 	// Players are ordered
-	PlayersOrder []string
-	Players      map[string]map[string]*PlayerCard
-	TrumpSuit    string
-	Wagers       map[string]int
-	WagerSum     int
-	Hands        []*Hand
+	PlayersOrder  []string
+	Players       map[string]map[string]*PlayerCard
+	TrumpSuit     string
+	Wagers        map[string]int
+	WagerSum      int
+	FinishedHands []*Hand
+	CurrentHand   *Hand
 	//
 	State RoundState
 }
@@ -71,7 +72,8 @@ func NewRound(players []string, deck Deck, cardsPerPlayer int) *Round {
 		TrumpSuit:      "",
 		Wagers:         map[string]int{},
 		WagerSum:       0,
-		Hands:          []*Hand{},
+		FinishedHands:  []*Hand{},
+		CurrentHand:    nil,
 		State:          RoundStateCardsDealt,
 	}
 	round.deal()
@@ -124,12 +126,12 @@ func (round *Round) StartHand() error {
 	}
 	round.State = RoundStateHandInProgress
 	var players []string
-	if len(round.Hands) == 0 {
+	if len(round.FinishedHands) == 0 {
 		// first hand?  start with the first player
 		players = append([]string{}, round.PlayersOrder...)
 	} else {
 		// not the first hand?  start with the previous winner, otherwise continue in the same order
-		prevHand := round.Hands[len(round.Hands)-1]
+		prevHand := round.FinishedHands[len(round.FinishedHands)-1]
 		var i int
 		var player string
 		for i, player = range round.PlayersOrder {
@@ -141,15 +143,8 @@ func (round *Round) StartHand() error {
 			players = append(players, round.PlayersOrder[i%len(round.PlayersOrder)])
 		}
 	}
-	round.Hands = append(round.Hands, NewHand(round.Deck, round.TrumpSuit, players))
+	round.CurrentHand = NewHand(round.Deck, round.TrumpSuit, players)
 	return nil
-}
-
-func (round *Round) CurrentHand() (*Hand, error) {
-	if round.State != RoundStateHandInProgress {
-		return nil, errors.New(fmt.Sprintf("expected state RoundStateHandInProgress, found %s", round.State.String()))
-	}
-	return round.Hands[len(round.Hands)-1], nil
 }
 
 func (round *Round) playerHasCard(player string, card *Card) bool {
@@ -158,11 +153,12 @@ func (round *Round) playerHasCard(player string, card *Card) bool {
 }
 
 func (round *Round) PlayCard(player string, card *Card) error {
-	hand, err := round.CurrentHand()
-	if err != nil {
-		return err
+	if round.State != RoundStateHandInProgress {
+		return errors.New(fmt.Sprintf("expected state RoundStateHandInProgress, found %s", round.State.String()))
 	}
+
 	// is this the right next player?
+	hand := round.CurrentHand
 	nextPlayer := hand.PlayersOrder[len(hand.CardsPlayed)]
 	if nextPlayer != player {
 		return errors.New(fmt.Sprintf("expected player %s, got %s", nextPlayer, player))
@@ -194,8 +190,10 @@ func (round *Round) PlayCard(player string, card *Card) error {
 
 	// have we finished the hand?
 	if len(hand.CardsPlayed) == len(round.PlayersOrder) {
+		round.FinishedHands = append(round.FinishedHands, round.CurrentHand)
+		round.CurrentHand = nil
 		// have we finished the round?
-		if len(round.Hands) == round.CardsPerPlayer {
+		if len(round.FinishedHands) == round.CardsPerPlayer {
 			round.State = RoundStateFinished
 		} else {
 			round.State = RoundStateWagersMade
