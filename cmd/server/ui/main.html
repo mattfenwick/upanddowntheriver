@@ -9,6 +9,7 @@
         <script src="./jquery-dev.js"></script>
         <script src="./main.js"></script>
 
+
         <div id="me" style="border: 1px dashed; padding: 8px; margin: 4px;">
             <div id="me-get-name">
                 What's your name?
@@ -18,23 +19,77 @@
             <div id="me-show-name"></div>
         </div>
 
+
         <div id="game" style="border: 1px dashed; padding: 8px; margin: 4px;">
             Who's in the game?
             <table id="game-players"></table>
-            Cards per player:
-            <select id="game-cards-per-player">
-            </select>
+
+            <div style="border: 1px dashed; padding: 8px; margin: 4px;">
+                Cards per player:
+                <select id="game-cards-per-player">
+                </select>
+            </div>
+
+            <br />
+
+            <button id="game-round-start">Start Round!</button>
         </div>
 
+
         <div id="round" style="border: 1px dashed; padding: 8px; margin: 4px;">
-            <button id="round-start">Start Round!</button>
-            <table id="round-wagers"></table>
-            <table id="round-cards"></table>
+            <div id="round-suit-container">
+                Trump suit:
+                <div id="round-suit"></div>
+            </div>
+
+            <table id="round-cards">
+                <caption>Cards</caption>
+            </table>
+
+            <div id="round-wager">
+                Make wager!
+                <select id="round-wager-select"></select>
+            </div>
+
+            <table id="round-wagers">
+                <caption>Wagers</caption>
+                <thead>
+                    <th>Player</th>
+                    <th>Wager</th>
+                    <th>Hands won</th>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <button id="round-start-hand">Start Hand</button>
+
             <button id="round-finish">Finish Round</button>
         </div>
 
+
         <div id="hand" style="border: 1px dashed; padding: 8px; margin: 4px;">
-            <table id="hand-cards"></table>
+            <div id="hand-suit"></div>
+
+            <div id="hand-leader">
+                <div id="hand-leader-player"></div>
+                <div id="hand-leader-card"></div>
+            </div>
+
+            <table id="hand-cards">
+                <caption>Cards Played</caption>
+                <thead>
+                    <th>Player</th>
+                    <th>Card</th>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <div id="hand-play">
+                It's your turn to play!
+                <select id="hand-play-select"></select>
+            </div>
+
         </div>
+
     </body>
 </html>
