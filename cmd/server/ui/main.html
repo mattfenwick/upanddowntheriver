@@ -47,7 +47,7 @@
             </table>
 
             <div id="round-wager">
-                Make wager!
+                <button id="round-wager-button">Place your wager!</button>
                 <select id="round-wager-select"></select>
             </div>
 
@@ -70,7 +70,7 @@
         <div id="hand" style="border: 1px dashed; padding: 8px; margin: 4px;">
             <div id="hand-suit"></div>
 
-            <div id="hand-leader">
+            <div id="hand-leader-container">
                 <div id="hand-leader-player"></div>
                 <div id="hand-leader-card"></div>
             </div>
@@ -84,10 +84,13 @@
                 <tbody></tbody>
             </table>
 
-            <div id="hand-play">
-                It's your turn to play!
+            <div id="hand-play-container">
+                It's your turn!
                 <select id="hand-play-select"></select>
+                <button id="hand-play-button">Play this card!</button>
             </div>
+
+            <button id="hand-finish-button">Finish Hand</button>
 
         </div>
 

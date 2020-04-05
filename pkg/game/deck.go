@@ -9,7 +9,9 @@ import (
 type Deck interface {
 	Suits() []string
 	Numbers() []string
-	Compare(l string, r string) int
+	CompareNumbers(l string, r string) int
+	CompareSuits(l string, r string) int
+	Compare(l *Card, r *Card) int
 	Shuffle() []*Card
 }
 
@@ -50,6 +52,7 @@ func Shuffle(cards []*Card) []*Card {
 
 type StandardDeck struct {
 	DeckSuits     []string
+	SuitRatings   map[string]int
 	DeckNumbers   []string
 	NumberRatings map[string]int
 }
@@ -60,8 +63,14 @@ func NewStandardDeck() *StandardDeck {
 	for i, num := range numbers {
 		ratings[num] = i
 	}
+	suits := []string{"Clubs", "Diamonds", "Hearts", "Spades"}
+	suitRatings := map[string]int{}
+	for i, suit := range suits {
+		suitRatings[suit] = i
+	}
 	return &StandardDeck{
-		DeckSuits:     []string{"Clubs", "Diamonds", "Hearts", "Spades"},
+		DeckSuits:     suits,
+		SuitRatings:   suitRatings,
 		DeckNumbers:   numbers,
 		NumberRatings: ratings,
 	}
@@ -75,7 +84,7 @@ func (sd *StandardDeck) Numbers() []string {
 	return sd.DeckNumbers
 }
 
-func (sd *StandardDeck) Compare(l string, r string) int {
+func (sd *StandardDeck) CompareNumbers(l string, r string) int {
 	lRating, ok := sd.NumberRatings[l]
 	if !ok {
 		panic(fmt.Sprintf("invalid value %s, expected one of %+v", l, sd.DeckNumbers))
@@ -85,6 +94,26 @@ func (sd *StandardDeck) Compare(l string, r string) int {
 		panic(fmt.Sprintf("invalid value %s, expected one of %+v", r, sd.DeckNumbers))
 	}
 	return lRating - rRating
+}
+
+func (sd *StandardDeck) CompareSuits(l string, r string) int {
+	lRating, ok := sd.SuitRatings[l]
+	if !ok {
+		panic(fmt.Sprintf("invalid value %s, expected one of %+v", l, sd.DeckNumbers))
+	}
+	rRating, ok := sd.SuitRatings[r]
+	if !ok {
+		panic(fmt.Sprintf("invalid value %s, expected one of %+v", r, sd.DeckNumbers))
+	}
+	return lRating - rRating
+}
+
+func (sd *StandardDeck) Compare(l *Card, r *Card) int {
+	num := sd.CompareNumbers(l.Number, r.Number)
+	if num != 0 {
+		return num
+	}
+	return sd.CompareSuits(l.Suit, r.Suit)
 }
 
 func (sd *StandardDeck) Shuffle() []*Card {
@@ -109,7 +138,15 @@ func (dsd *DeterministicShuffleDeck) Numbers() []string {
 	return dsd.StandardDeck.Numbers()
 }
 
-func (dsd *DeterministicShuffleDeck) Compare(l string, r string) int {
+func (dsd *DeterministicShuffleDeck) CompareNumbers(l string, r string) int {
+	return dsd.StandardDeck.CompareNumbers(l, r)
+}
+
+func (dsd *DeterministicShuffleDeck) CompareSuits(l string, r string) int {
+	return dsd.StandardDeck.CompareSuits(l, r)
+}
+
+func (dsd *DeterministicShuffleDeck) Compare(l *Card, r *Card) int {
 	return dsd.StandardDeck.Compare(l, r)
 }
 

@@ -22,6 +22,14 @@ func RunGameTests() {
 	nineOfDiamonds := &Card{Suit: "Diamonds", Number: "9"}
 	kingOfHearts := &Card{Suit: "Hearts", Number: "K"}
 
+	Describe("Deck", func() {
+		It("should order cards correctly", func() {
+			deck := NewStandardDeck()
+			Expect(deck.CompareNumbers("A", "Q") > 0).To(BeTrue())
+			Expect(deck.CompareNumbers("Q", "A") < 0).To(BeTrue())
+		})
+	})
+
 	Describe("Game", func() {
 		Describe("Initialization", func() {
 			It("should have the right number of cards per player", func() {

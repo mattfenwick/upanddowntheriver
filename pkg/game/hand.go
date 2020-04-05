@@ -35,7 +35,7 @@ func (hand *Hand) PlayCard(player string, card *Card) {
 		// which suit is better?  trump > following suit > something else
 		if card.Suit == hand.TrumpSuit && hand.LeaderCard.Suit == hand.TrumpSuit {
 			// 1. both trumps -- use numbers
-			if hand.Deck.Compare(hand.LeaderCard.Number, card.Number) < 0 {
+			if hand.Deck.CompareNumbers(hand.LeaderCard.Number, card.Number) < 0 {
 				hand.Leader = player
 				hand.LeaderCard = card
 			}
@@ -48,7 +48,7 @@ func (hand *Hand) PlayCard(player string, card *Card) {
 			// nothing to do
 		} else if card.Suit == hand.Suit && hand.LeaderCard.Suit == hand.Suit {
 			// 4. both following suit
-			if hand.Deck.Compare(hand.LeaderCard.Number, card.Number) < 0 {
+			if hand.Deck.CompareNumbers(hand.LeaderCard.Number, card.Number) < 0 {
 				hand.Leader = player
 				hand.LeaderCard = card
 			}

@@ -253,11 +253,13 @@ func (game *Game) playerModel(player string) (*PlayerModel, error) {
 	case GameStateRoundInProgress:
 		cards := []*Card{}
 		for _, pc := range game.CurrentRound.Players[player] {
-			cards = append(cards, pc.Card)
+			if !pc.IsPlayed {
+				cards = append(cards, pc.Card)
+			}
 		}
-		// let's sort the cards numerically ascending
+		// let's sort the cards numerically ascending, then break ties with suits
 		sort.Slice(cards, func(i, j int) bool {
-			return game.Deck.Compare(cards[i].Number, cards[j].Number) < 0
+			return game.Deck.Compare(cards[i], cards[j]) < 0
 		})
 		playerWins := map[string]int{}
 		for _, hand := range game.CurrentRound.FinishedHands {

@@ -19,6 +19,7 @@ type Responder interface {
 	StartHand() error
 	MakeWager(player string, hands int) error
 	PlayCard(player string, card *Card) error
+	FinishRound() error
 }
 
 type GetPlayerModelAction struct{}
@@ -33,11 +34,6 @@ type MakeWagerAction struct {
 	Hands int
 }
 
-type PlayCardAction struct {
-	Suit   string
-	Number string
-}
-
 type SetCardsPerPlayerAction struct {
 	Count int
 }
@@ -46,16 +42,19 @@ type StartHandAction struct{}
 
 type StartRoundAction struct{}
 
+type FinishRoundAction struct{}
+
 type PlayerAction struct {
 	Me                string
 	GetModel          *GetPlayerModelAction
 	Join              *JoinAction
 	MakeWager         *MakeWagerAction
-	PlayCard          *PlayCardAction
+	PlayCard          *Card
 	RemovePlayer      *RemovePlayerAction
 	SetCardsPerPlayer *SetCardsPerPlayerAction
 	StartHand         *StartHandAction
 	StartRound        *StartRoundAction
+	FinishRound       *FinishRoundAction
 }
 
 func SetupHTTPServer(uiDirectory string, responder Responder) {
@@ -133,6 +132,8 @@ func SetupHTTPServer(uiDirectory string, responder Responder) {
 				actionErr = responder.PlayCard(action.Me, &Card{Suit: action.PlayCard.Suit, Number: action.PlayCard.Number})
 			} else if action.StartHand != nil {
 				actionErr = responder.StartHand()
+			} else if action.FinishRound != nil {
+				actionErr = responder.FinishRound()
 			} else {
 				http.Error(w, "action must have non-nil for one of GetModel, Join, StartRound, MakeWager, RemovePlayer, SetCardsPerPlayer, or PlayCard", 400)
 				return

@@ -66,8 +66,12 @@ function postStartHand(me, cont) {
     postAction({'Me': me, 'StartHand': {}}, cont);
 }
 
-function postPlayCard(me, number, suit, cont) {
-    postAction({'Me': me, 'PlayCard': {'Number': number, 'Suit': suit}}, cont)
+function postPlayCard(me, card, cont) {
+    postAction({'Me': me, 'PlayCard': card}, cont)
+}
+
+function postFinishRound(me, cont) {
+    postAction({'Me': me, 'FinishRound': {}}, cont);
 }
 
 // util
@@ -242,13 +246,14 @@ function Round(didChooseWager, didClickStartHand, didClickFinishRound) {
     this.wagersTable = $("#round-wagers");
     this.wagersTableBody = $("#round-wagers tbody");
     this.wagerSelect = $("#round-wager-select");
+    this.wagerButton = $("#round-wager-button");
     this.trumpSuitDiv = $("#round-suit");
     this.trumpContainer = $("#round-suit-container");
     this.wagerContainer = $("#round-wager");
     this.startHandButton = $("#round-start-hand");
 
     let self = this;
-    this.wagerSelect.change(function() {
+    this.wagerButton.click(function() {
         let wager = parseInt(self.wagerSelect.val(), 10);
         didChooseWager(wager);
     });
@@ -375,7 +380,6 @@ Round.prototype.setCards = function(cards) {
     let self = this;
     suits.forEach(function(suit) {
         let suitTds = [];
-        cardsBySuit[suit].sort();
         cardsBySuit[suit].forEach(function(number) {
             suitTds.push(`<td>${number}</td>`);
         });
@@ -420,24 +424,26 @@ function Hand(didClickPlayCard) {
     this.suit = "";
     this.leader = "";
     this.leaderCard = null;
-    this.cardsPlayed = null;
+    this.cardsPlayed = [];
     this.nextPlayer = "";
     this.myCards = [];
 
-    this.setState("NotJoined");
-
     this.suitDiv = $("#hand-suit");
+    this.leaderContainer = $("#hand-leader-container");
     this.leaderPlayerDiv = $("#hand-leader-player");
     this.leaderCardDiv = $("#hand-leader-card");
     this.cardsPlayedTable = $("#hand-cards");
     this.cardsPlayedTableBody = $("#hand-cards tbody");
-    this.playContainer = $("#hand-play");
+    this.playContainer = $("#hand-play-container");
     this.playSelect = $("#hand-play-select");
+    this.playButton = $("#hand-play-button");
+
+    this.setState("NotJoined");
 
     let self = this;
-    this.playSelect.change(function() {
+    this.playButton.click(function() {
         let i = parseInt(self.playSelect.val(), 10);
-        didClickPlayCard(this.myCards[i]);
+        didClickPlayCard(self.myCards[i]);
     });
 
 }
@@ -445,45 +451,41 @@ function Hand(didClickPlayCard) {
 Hand.prototype.update = function(me, state, suit, leader, leaderCard, cardsPlayed, nextPlayer, myCards) {
     this.me = me;
     this.setState(state);
-    if ( suit ) {
+    // if ( suit ) {
         this.setSuit(suit);
-    }
-    if ( leader ) {
+    // }
+    // if ( leader ) {
         this.setLeader(leader);
-    }
-    if ( leaderCard ) {
+    // }
+    // if ( leaderCard ) {
         this.setLeaderCard(leaderCard);
-    }
-    if ( cardsPlayed ) {
+    // }
+    // if ( cardsPlayed ) {
         this.setCardsPlayed(cardsPlayed);
-    }
-    if ( nextPlayer ) {
-        this.setNextPlayer(nextPlayer);
-    }
-    if ( myCards ) {
+    // }
+    // if ( myCards ) {
         this.setMyCards(myCards);
-    }
+    // }
+    // if ( nextPlayer ) {
+        this.setNextPlayer(nextPlayer);
+    // }
 };
 
 Hand.prototype.setMyCards = function(myCards) {
-    if ( arrayEquals(myCards, this.myCards) ) { return; }
+    if ( equals(myCards, this.myCards) ) { return; }
     this.myCards = myCards;
-    this.playSelect.empty();
-    for ( let i = 0; i < this.cards.length; i++ ) {
-        this.playSelect.append(`<option value="${i}">${i}</option>`);
-    }
 };
 
 Hand.prototype.setNextPlayer = function(player) {
     if ( this.nextPlayer === player ) { return; }
     this.nextPlayer = player;
-    this.suitDiv.empty();
-    this.suitDiv.append(`Suit: ${suit}`);
 
     if ( player === this.me && this.state === "HandPlayTurn" ) {
         this.playSelect.empty();
-        for ( let i = 1; i <= this.cards.length; i++ ) {
-            this.playSelect.append(`<option value="${i}">${i}</option>`);
+        for ( let i = 0; i < this.myCards.length; i++ ) {
+            let card = this.myCards[i];
+            let desc = `${card.Number} of ${card.Suit}`;
+            this.playSelect.append(`<option value="${i}">${desc}</option>`);
         }
         this.playContainer.show();
     } else {
@@ -506,28 +508,30 @@ Hand.prototype.setLeader = function(leader) {
 };
 
 Hand.prototype.setLeaderCard = function(leaderCard) {
-    if ( objectEquals(this.leaderCard, leaderCard) ) { return; }
+    if ( equals(this.leaderCard, leaderCard) ) { return; }
     this.leaderCard = leaderCard;
     this.leaderCardDiv.empty();
+    if ( !leaderCard ) { return; }
     this.leaderCardDiv.append(`Leader card: ${leaderCard.Number} of ${leaderCard.Suit}`);
 };
 
 Hand.prototype.setCardsPlayed = function(cardsPlayed) {
-    if ( arrayEquals(this.cardsPlayed, cardsPlayed) ) { return; }
+    if ( equals(this.cardsPlayed, cardsPlayed) ) { return; }
     this.cardsPlayed = cardsPlayed;
     let self = this;
     self.cardsPlayedTableBody.empty();
     cardsPlayed.forEach(function(playedCard) {
         let player = playedCard.Player;
-        let card = `${playedCard.Card.Number} of ${playedCard.Card.Suit}`;
+        let card = playedCard.Card;
+        let desc = card ? `${playedCard.Card.Number} of ${playedCard.Card.Suit}` : "";
         let style = (player === self.me) ? 'style="border: 1px dashed; padding: 8px; margin: 4px;"' : '';
-        self.wagersTableBody.append(`
+        self.cardsPlayedTableBody.append(`
             <tr ${style}>
                 <td>
                 ${player}
                 </td>
                 <td>
-                ${card}
+                ${desc}
                 </td>
             </tr>
         `)
@@ -540,16 +544,40 @@ Hand.prototype.setState = function(state) {
     console.log(`setting hand state to ${state}`);
     switch (state) {
         case "NotJoined":
+            this.suitDiv.hide();
+            this.leaderContainer.hide();
+            this.cardsPlayedTable.hide();
+            this.playContainer.hide();
             break;
         case "WaitingForPlayers":
+            this.suitDiv.hide();
+            this.leaderContainer.hide();
+            this.cardsPlayedTable.hide();
+            this.playContainer.hide();
             break;
         case "RoundWagerTurn":
+            this.suitDiv.hide();
+            this.leaderContainer.hide();
+            this.cardsPlayedTable.hide();
+            this.playContainer.hide();
             break;
         case "RoundHandReady":
+            this.suitDiv.hide();
+            this.leaderContainer.hide();
+            this.cardsPlayedTable.hide();
+            this.playContainer.hide();
             break;
         case "HandPlayTurn":
+            this.suitDiv.show();
+            this.leaderContainer.show();
+            this.cardsPlayedTable.show();
+            // this.playContainer.show(); // this gets handled by setNextPlayer()
             break;
         case "RoundFinished":
+            this.suitDiv.hide();
+            this.leaderContainer.hide();
+            this.cardsPlayedTable.hide();
+            this.playContainer.hide();
             break;
         default:
             throw new Error(`invalid hand state ${state}`);
@@ -584,12 +612,14 @@ function Model() {
         self.startHand();
     }
     function didClickFinishRound() {
-        throw new Error("TODO!");
+        self.finishRound();
     }
     this.round = new Round(didChooseWager, didClickStartHand, didClickFinishRound);
 
-    // TODO some actions
-    this.hand = new Hand();
+    function didClickPlayCard(card) {
+        self.playCard(card);
+    }
+    this.hand = new Hand(didClickPlayCard);
 
     this.pollServer();
 }
@@ -628,7 +658,7 @@ Model.prototype.updateFromServer = function(ok, data) {
     if ( hand ) {
         this.hand.update(me, data.State, hand.Suit, hand.Leader, hand.LeaderCard, hand.CardsPlayed, hand.NextPlayer, hand.Cards);
     } else {
-        this.hand.update(me, data.State, null, null, null, null, null, null);
+        this.hand.update(me, data.State, "", "", null, [], "", []);
     }
 };
 
@@ -667,35 +697,18 @@ Model.prototype.makeWager = function(hands) {
     postWager(this.me.name, hands, this.updateFromServer.bind(this));
 };
 
-Model.prototype.playCard = function(number, suit) {
-    console.log(`playing card ${number} ${suit}`);
-    postPlayCard(this.me.name, number, suit, this.updateFromServer.bind(this));
+Model.prototype.playCard = function(card) {
+    console.log(`playing card ${card.Number} of ${card.Suit}`);
+    postPlayCard(this.me.name, card, this.updateFromServer.bind(this));
+};
+
+Model.prototype.finishRound = function() {
+    postFinishRound(this.me.name, this.updateFromServer.bind(this));
 };
 
 
 //
 
 let model = new Model();
-
-
-// initialization: poll server for model, tie model to ui updates
-
-// model.listen("players", gameSetPlayers);
-// model.listen("me", configSetName);
-// model.listen("startRound", roundStart);
-
-// (async function() {
-//     model.updateFromServer(true, {
-//         'Me': 'abc',
-//         'State': 'WaitingForPlayers',
-//         'Game': {'Players': ['abc', 'def'], 'CardsPerPlayer': 5}
-//     });
-//     await sleep(1000);
-//     model.updateFromServer(true, {
-//         'Me': 'abc',
-//         'State': 'CardsDealt',
-//         'Game': {'Players': ['abc', 'def'], 'CardsPerPlayer': 5}
-//     });
-// })();
 
 });
