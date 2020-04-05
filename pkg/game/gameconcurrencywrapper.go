@@ -117,6 +117,18 @@ func (gcw *GameConcurrencyWrapper) StartHand() error {
 	return <-done
 }
 
+func (gcw *GameConcurrencyWrapper) FinishHand() error {
+	done := make(chan error)
+	gcw.Actions <- &Action{"finishHand", func() error {
+		err := gcw.Game.finishHand()
+		go func() {
+			done <- err
+		}()
+		return err
+	}}
+	return <-done
+}
+
 func (gcw *GameConcurrencyWrapper) FinishRound() error {
 	done := make(chan error)
 	gcw.Actions <- &Action{"finishRound", func() error {

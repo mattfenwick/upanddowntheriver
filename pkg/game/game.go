@@ -145,16 +145,23 @@ func (game *Game) finishRound() error {
 
 func (game *Game) makeWager(player string, hands int) error {
 	if game.State != GameStateRoundInProgress {
-		return errors.New(fmt.Sprintf("can't get current round, game in state %s", game.State.String()))
+		return errors.New(fmt.Sprintf("can't make wager, game in state %s", game.State.String()))
 	}
 	return game.CurrentRound.Wager(player, hands)
 }
 
 func (game *Game) playCard(player string, card *Card) error {
 	if game.State != GameStateRoundInProgress {
-		return errors.New(fmt.Sprintf("can't get current round, game in state %s", game.State.String()))
+		return errors.New(fmt.Sprintf("can't play card, game in state %s", game.State.String()))
 	}
 	return game.CurrentRound.PlayCard(player, card)
+}
+
+func (game *Game) finishHand() error {
+	if game.State != GameStateRoundInProgress {
+		return errors.New(fmt.Sprintf("can't finish hand, game in state %s", game.State.String()))
+	}
+	return game.CurrentRound.FinishHand()
 }
 
 // getters
@@ -167,6 +174,7 @@ const (
 	PlayerStateRoundWagerTurn        PlayerState = iota
 	PlayerStateRoundHandReady        PlayerState = iota
 	PlayerStateHandPlayTurn          PlayerState = iota
+	PlayerStateHandFinished          PlayerState = iota
 	PlayerStateRoundFinished         PlayerState = iota
 )
 
@@ -182,6 +190,8 @@ func (p PlayerState) JSONString() string {
 		return "RoundHandReady"
 	case PlayerStateHandPlayTurn:
 		return "HandPlayTurn"
+	case PlayerStateHandFinished:
+		return "HandFinished"
 	case PlayerStateRoundFinished:
 		return "RoundFinished"
 	}
@@ -302,11 +312,15 @@ func (game *Game) playerModel(player string) (*PlayerModel, error) {
 		case RoundStateCardsDealt:
 			state = PlayerStateRoundWagerTurn
 			break
-		case RoundStateWagersMade:
+		case RoundStateHandReady:
 			state = PlayerStateRoundHandReady
 			break
-		case RoundStateHandInProgress:
-			state = PlayerStateHandPlayTurn
+		case RoundStateHandInProgress, RoundStateHandFinished:
+			if game.CurrentRound.State == RoundStateHandInProgress {
+				state = PlayerStateHandPlayTurn
+			} else {
+				state = PlayerStateHandFinished
+			}
 			ch := game.CurrentRound.CurrentHand
 			cardsPlayed := []*PlayedCard{}
 			nextPlayer := ""
@@ -329,6 +343,9 @@ func (game *Game) playerModel(player string) (*PlayerModel, error) {
 				NextPlayer:  nextPlayer,
 			}
 			break
+		//case RoundStateHandFinished:
+		//	state = PlayerStateHandFinished
+		//	break
 		case RoundStateFinished:
 			state = PlayerStateRoundFinished
 			break

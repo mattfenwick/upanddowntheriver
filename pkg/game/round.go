@@ -9,8 +9,9 @@ type RoundState int
 
 const (
 	RoundStateCardsDealt     RoundState = iota
-	RoundStateWagersMade     RoundState = iota
+	RoundStateHandReady      RoundState = iota
 	RoundStateHandInProgress RoundState = iota
+	RoundStateHandFinished   RoundState = iota
 	RoundStateFinished       RoundState = iota
 )
 
@@ -18,10 +19,12 @@ func (r RoundState) String() string {
 	switch r {
 	case RoundStateCardsDealt:
 		return "RoundStateCardsDealt"
-	case RoundStateWagersMade:
-		return "RoundStateWagersMade"
+	case RoundStateHandReady:
+		return "RoundStateHandReady"
 	case RoundStateHandInProgress:
 		return "RoundStateHandInProgress"
+	case RoundStateHandFinished:
+		return "RoundStateHandFinished"
 	case RoundStateFinished:
 		return "RoundStateFinished"
 	}
@@ -113,7 +116,7 @@ func (round *Round) Wager(player string, hands int) error {
 			// wrong -- like above, where a player has already made a wager or where a player is unrecognized
 			return errors.New(fmt.Sprintf("dealer's wager can't add up to %d (had %d already, wagered %d)", round.CardsPerPlayer, round.WagerSum, hands))
 		}
-		round.State = RoundStateWagersMade
+		round.State = RoundStateHandReady
 	}
 	round.Wagers[player] = hands
 	round.WagerSum += hands
@@ -121,7 +124,7 @@ func (round *Round) Wager(player string, hands int) error {
 }
 
 func (round *Round) StartHand() error {
-	if round.State != RoundStateWagersMade {
+	if round.State != RoundStateHandReady {
 		return errors.New(fmt.Sprintf("expected state RoundStateWagersMade for starting a hand, found %s", round.State.String()))
 	}
 	round.State = RoundStateHandInProgress
@@ -190,15 +193,25 @@ func (round *Round) PlayCard(player string, card *Card) error {
 
 	// have we finished the hand?
 	if len(hand.CardsPlayed) == len(round.PlayersOrder) {
-		round.FinishedHands = append(round.FinishedHands, round.CurrentHand)
-		round.CurrentHand = nil
-		// have we finished the round?
-		if len(round.FinishedHands) == round.CardsPerPlayer {
-			round.State = RoundStateFinished
-		} else {
-			round.State = RoundStateWagersMade
-		}
+		round.State = RoundStateHandFinished
 	}
 
+	return nil
+}
+
+func (round *Round) FinishHand() error {
+	if round.State != RoundStateHandFinished {
+		return errors.New(fmt.Sprintf("expected state RoundStateHandFinished, found %s", round.State.String()))
+	}
+
+	round.FinishedHands = append(round.FinishedHands, round.CurrentHand)
+	round.CurrentHand = nil
+
+	// have we finished the round?
+	if len(round.FinishedHands) == round.CardsPerPlayer {
+		round.State = RoundStateFinished
+	} else {
+		round.State = RoundStateHandReady
+	}
 	return nil
 }

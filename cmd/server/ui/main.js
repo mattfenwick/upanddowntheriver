@@ -70,6 +70,10 @@ function postPlayCard(me, card, cont) {
     postAction({'Me': me, 'PlayCard': card}, cont)
 }
 
+function postFinishHand(me, cont) {
+    postAction({'Me': me, 'FinishHand': {}}, cont);
+}
+
 function postFinishRound(me, cont) {
     postAction({'Me': me, 'FinishRound': {}}, cont);
 }
@@ -189,6 +193,8 @@ Game.prototype.setState = function(state) {
             break;
         case "HandPlayTurn":
             break;
+        case "HandFinished":
+            break;
         case "RoundFinished":
             break;
         default:
@@ -300,7 +306,7 @@ Round.prototype.setNextWagerPlayer = function(player) {
     this.nextWagerPlayer = player;
     if ( player === this.me && this.state === "RoundWagerTurn" ) {
         this.wagerSelect.empty();
-        for ( let i = 1; i <= this.cards.length; i++ ) {
+        for ( let i = 0; i <= this.cards.length; i++ ) {
             this.wagerSelect.append(`<option value="${i}">${i}</option>`);
         }
         this.wagerContainer.show();
@@ -347,6 +353,14 @@ Round.prototype.setRoundState = function(state) {
             this.wagersTable.show();
             break;
         case "HandPlayTurn":
+            this.cardsTable.show();
+            this.finishButton.hide();
+            this.startHandButton.hide();
+            this.trumpContainer.show();
+            this.wagerContainer.hide();
+            this.wagersTable.show();
+            break;
+        case "HandFinished":
             this.cardsTable.show();
             this.finishButton.hide();
             this.startHandButton.hide();
@@ -418,7 +432,7 @@ Round.prototype.setWagers = function(wagers) {
 
 // hand
 
-function Hand(didClickPlayCard) {
+function Hand(didClickPlayCard, didClickFinishHand) {
     this.me = "";
     this.state = "";
     this.suit = "";
@@ -437,6 +451,7 @@ function Hand(didClickPlayCard) {
     this.playContainer = $("#hand-play-container");
     this.playSelect = $("#hand-play-select");
     this.playButton = $("#hand-play-button");
+    this.finishButton = $("#hand-finish-button");
 
     this.setState("NotJoined");
 
@@ -445,7 +460,7 @@ function Hand(didClickPlayCard) {
         let i = parseInt(self.playSelect.val(), 10);
         didClickPlayCard(self.myCards[i]);
     });
-
+    this.finishButton.click(didClickFinishHand);
 }
 
 Hand.prototype.update = function(me, state, suit, leader, leaderCard, cardsPlayed, nextPlayer, myCards) {
@@ -548,36 +563,49 @@ Hand.prototype.setState = function(state) {
             this.leaderContainer.hide();
             this.cardsPlayedTable.hide();
             this.playContainer.hide();
+            this.finishButton.hide();
             break;
         case "WaitingForPlayers":
             this.suitDiv.hide();
             this.leaderContainer.hide();
             this.cardsPlayedTable.hide();
             this.playContainer.hide();
+            this.finishButton.hide();
             break;
         case "RoundWagerTurn":
             this.suitDiv.hide();
             this.leaderContainer.hide();
             this.cardsPlayedTable.hide();
             this.playContainer.hide();
+            this.finishButton.hide();
             break;
         case "RoundHandReady":
             this.suitDiv.hide();
             this.leaderContainer.hide();
             this.cardsPlayedTable.hide();
             this.playContainer.hide();
+            this.finishButton.hide();
             break;
         case "HandPlayTurn":
             this.suitDiv.show();
             this.leaderContainer.show();
             this.cardsPlayedTable.show();
             // this.playContainer.show(); // this gets handled by setNextPlayer()
+            this.finishButton.hide();
+            break;
+        case "HandFinished":
+            this.suitDiv.show();
+            this.leaderContainer.show();
+            this.cardsPlayedTable.show();
+            this.playContainer.hide();
+            this.finishButton.show();
             break;
         case "RoundFinished":
             this.suitDiv.hide();
             this.leaderContainer.hide();
             this.cardsPlayedTable.hide();
             this.playContainer.hide();
+            this.finishButton.hide();
             break;
         default:
             throw new Error(`invalid hand state ${state}`);
@@ -619,7 +647,10 @@ function Model() {
     function didClickPlayCard(card) {
         self.playCard(card);
     }
-    this.hand = new Hand(didClickPlayCard);
+    function didClickFinishHand() {
+        self.finishHand();
+    }
+    this.hand = new Hand(didClickPlayCard, didClickFinishHand);
 
     this.pollServer();
 }
@@ -702,7 +733,13 @@ Model.prototype.playCard = function(card) {
     postPlayCard(this.me.name, card, this.updateFromServer.bind(this));
 };
 
+Model.prototype.finishHand = function() {
+    console.log("finishing hand");
+    postFinishHand(this.me.name, this.updateFromServer.bind(this));
+};
+
 Model.prototype.finishRound = function() {
+    console.log("finishing round");
     postFinishRound(this.me.name, this.updateFromServer.bind(this));
 };
 
