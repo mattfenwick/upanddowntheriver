@@ -1,6 +1,6 @@
 COMPONENTS = server
 
-IMAGE_BASE=docker.io/mfenwick100/upanddowntheriver/server:master
+IMAGE=docker.io/mfenwick100/upanddowntheriver:master
 
 CURRENT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 OUTDIR=_output
@@ -13,7 +13,7 @@ compile: ${OUTDIR} ${COMPONENTS}
 
 ${COMPONENTS}:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./cmd/$@/$@ ./cmd/$@
-	docker build -t $(IMAGE_BASE)$@:$(IMAGE_TAG) ./cmd/$@
+	docker build -t $(IMAGE) ./cmd/$@
 	mv cmd/$@/$@ $(OUTDIR)
 	# gcloud docker -- push $(IMAGE_BASE)$@:$(IMAGE_TAG)
 
