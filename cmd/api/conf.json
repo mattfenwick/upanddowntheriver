@@ -1,0 +1,5 @@
+{
+  "LogLevel": "debug",
+  "Port": 5932,
+  "Host": "localhost"
+}

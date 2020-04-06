@@ -165,6 +165,8 @@ func SetupHTTPServer(uiDirectory string, responder Responder) {
 
 			log.Infof("handled action %+v", action)
 			log.Tracef("response %s", string(pmBytes))
+			header := w.Header()
+			header.Set(http.CanonicalHeaderKey("content-type"), "application/json")
 			fmt.Fprint(w, string(pmBytes))
 		} else {
 			log.Errorf("verb %s not supported for /action", r.Method)

@@ -50,6 +50,20 @@ func Shuffle(cards []*Card) []*Card {
 	return cardsCopy
 }
 
+func RandomSuit(deck Deck) string {
+	suits := deck.Suits()
+	suitsCopy := make([]string, len(suits))
+	for i, c := range suits {
+		suitsCopy[i] = c
+	}
+	swap := func(i int, j int) {
+		suitsCopy[i], suitsCopy[j] = suitsCopy[j], suitsCopy[i]
+	}
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(suitsCopy), swap)
+	return suitsCopy[0]
+}
+
 type StandardDeck struct {
 	DeckSuits     []string
 	SuitRatings   map[string]int

@@ -92,7 +92,10 @@ func (round *Round) deal() {
 			j++
 		}
 	}
-	round.TrumpSuit = cards[j].Suit
+	// instead of reserving a card to choose as the trump suit, we'll just randomly pick a suit
+	// meaning that every single card could be dealt to players
+	// idk, it just seems like this should be fine
+	round.TrumpSuit = RandomSuit(round.Deck)
 }
 
 func (round *Round) Wager(player string, hands int) error {

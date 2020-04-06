@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	"sort"
@@ -207,6 +208,49 @@ func (p PlayerState) MarshalText() (text []byte, err error) {
 	return []byte(p.JSONString()), nil
 }
 
+func parsePlayerState(text string) (PlayerState, error) {
+	switch text {
+	case "WaitingForPlayers":
+		return PlayerStateGameWaitingForPlayers, nil
+	//case PlayerStateGameReady:
+	//	return "Ready"
+	case "RoundWagerTurn":
+		return PlayerStateRoundWagerTurn, nil
+	case "RoundHandReady":
+		return PlayerStateRoundHandReady, nil
+	case "HandPlayTurn":
+		return PlayerStateHandPlayTurn, nil
+	case "HandFinished":
+		return PlayerStateHandFinished, nil
+	case "RoundFinished":
+		return PlayerStateRoundFinished, nil
+	}
+	return PlayerStateGameWaitingForPlayers, errors.New(fmt.Sprintf("unable to parse player state %s", text))
+}
+
+func (p *PlayerState) UnmarshalJSON(data []byte) error {
+	var str string
+	err := json.Unmarshal(data, &str)
+	if err != nil {
+		return err
+	}
+	status, err := parsePlayerState(str)
+	if err != nil {
+		return err
+	}
+	*p = status
+	return nil
+}
+
+func (p *PlayerState) UnmarshalText(text []byte) (err error) {
+	status, err := parsePlayerState(string(text))
+	if err != nil {
+		return err
+	}
+	*p = status
+	return nil
+}
+
 type PlayerGame struct {
 	Players        []string
 	CardsPerPlayer int
@@ -343,9 +387,6 @@ func (game *Game) playerModel(player string) (*PlayerModel, error) {
 				NextPlayer:  nextPlayer,
 			}
 			break
-		//case RoundStateHandFinished:
-		//	state = PlayerStateHandFinished
-		//	break
 		case RoundStateFinished:
 			state = PlayerStateRoundFinished
 			break
@@ -363,63 +404,3 @@ func (game *Game) playerModel(player string) (*PlayerModel, error) {
 	}
 	return model, nil
 }
-
-//type GameModel struct {
-//	Players []string
-//}
-//
-//func (game *Game) GetGameModel() *GameModel {
-//	done := make(chan *GameModel)
-//	game.actions <- &Action{
-//		Name: "getGameModel",
-//		Apply: func() error {
-//			players := []string{}
-//			for player := range game.Players {
-//				players = append(players, player)
-//			}
-//			done <- &GameModel{Players: players}
-//			return nil
-//		},
-//	}
-//	return <-done
-//}
-//
-//type RoundModel struct {
-//	// PlayerOrder implies Dealer -- last player
-//	PlayerOrder []string
-//	TrumpSuit   string
-//	Wagers      map[string]int
-//	Hands       []*HandModel
-//	CurrentHand *HandModel
-//}
-//
-//func (game *Game) GetRoundModel() {
-//	// TODO player order, dealer, trump suit, hands, wagers
-//}
-//
-//type HandModel struct {
-//	Suit        string
-//	CardsPlayed map[string]*Card
-//	Leader      string
-//	LeaderCard  *Card
-//	NextPlayer  string
-//	Hand
-//}
-//
-//func (game *Game) GetHandModel() {
-//	// TODO suit, cards played, leader, leader card
-//}
-//
-//type HandResults struct {
-//	CardsPlayed map[string]*Card
-//	Winners     []string
-//	Losers      []string
-//}
-//
-//func (game *Game) GetHandResults() {
-//	// TODO winner, cards played
-//}
-//
-//func (game *Game) GetRoundResults() {
-//	// TODO wagers, winners, losers
-//}

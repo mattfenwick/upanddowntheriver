@@ -230,6 +230,7 @@ Game.prototype.setCardsPerPlayerOptions = function() {
         return;
     }
     domElem.prop('disabled', false);
+    // TODO pull out this 52 constant -- have server report number of cards
     let maxCards = 52 / this.players.length;
     domElem.empty();
     for (let i = 1; i <= maxCards; i++) {
@@ -661,7 +662,7 @@ Model.prototype.pollServer = function() {
     } else {
         getModel(this.updateFromServerFullModel.bind(this));
     }
-    setTimeout(this.pollServer.bind(this), 5000);
+    setTimeout(this.pollServer.bind(this), 2500);
 };
 
 Model.prototype.updateFromServerFullModel = function(ok, data) {

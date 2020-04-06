@@ -15,6 +15,7 @@ ${COMPONENTS}:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./cmd/$@/$@ ./cmd/$@
 	docker build -t $(IMAGE) ./cmd/$@
 	mv cmd/$@/$@ $(OUTDIR)
+	# docker push $(IMAGE)
 	# gcloud docker -- push $(IMAGE_BASE)$@:$(IMAGE_TAG)
 
 docker-image: $(COMPONENTS)
