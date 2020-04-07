@@ -373,6 +373,22 @@ Round.prototype.setRoundState = function(state) {
     }
 };
 
+let suitToUnicode = {
+    'Diamonds': ['red', '\u2666'],
+    'Hearts': ['red', '\u2665'],
+    'Clubs': ['black', '\u2663'],
+    'Spades': ['black', '\u2660'],
+};
+
+function Card(suit, number) {
+    let [color, symbol] = suitToUnicode[suit];
+    let klazz = `suit-${color}`;
+    return `<div class="round-card">
+            <div>${number}</div>
+            <div class="${klazz}">${symbol}</div>
+        </div>`
+}
+
 Round.prototype.setCards = function(cards) {
     if ( equals(cards, this.cards) ) {
         return;
@@ -390,12 +406,12 @@ Round.prototype.setCards = function(cards) {
     suits.sort();
     let self = this;
     suits.forEach(function(suit) {
-        let suitTds = [];
+        let suitDivs = [];
         cardsBySuit[suit].forEach(function(number) {
-            suitTds.push(`<td>${number}</td>`);
+            suitDivs.push(Card(suit, number));
         });
-        let tr = `<tr><td>${suit}</td>${suitTds.join("\n")}</tr>`;
-        self.cardsTable.append(tr);
+        let row = `<div class="round-suit">${suitDivs.join("\n")}</div>`;
+        self.cardsTable.append(row);
     });
 };
 
@@ -536,7 +552,7 @@ Hand.prototype.setCardsPlayed = function(cardsPlayed) {
     cardsPlayed.forEach(function(playedCard) {
         let player = playedCard.Player;
         let card = playedCard.Card;
-        let desc = card ? `${playedCard.Card.Number} of ${playedCard.Card.Suit}` : "";
+        let desc = card ? Card(playedCard.Card.Suit, playedCard.Card.Number) : "";
         let style = (player === self.me) ? 'style="border: 1px dashed; padding: 8px; margin: 4px;"' : '';
         self.cardsPlayedTableBody.append(`
             <tr ${style}>
