@@ -2,25 +2,21 @@
 
 $(document).ready(function() {
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 // network actions
 
-function getModel(cont) {
-    function f(data, status, _jqXHR) {
-        console.log("GET model response -- status " + status);
-        cont(status === 'success', data);
-    }
-    $.ajax({
-        'url': '/model',
-        'dataType': 'json',
-        'success': f,
-        'error': f,
-    });
-    console.log("fired off GET to /model");
-}
+// function getModel(cont) {
+//     function f(data, status, _jqXHR) {
+//         console.log("GET model response -- status " + status);
+//         cont(status === 'success', data);
+//     }
+//     $.ajax({
+//         'url': '/model',
+//         'dataType': 'json',
+//         'success': f,
+//         'error': f,
+//     });
+//     console.log("fired off GET to /model");
+// }
 
 function postAction(payload, cont) {
     function f(data, status, _jqXHR) {
@@ -657,17 +653,8 @@ function Model() {
 }
 
 Model.prototype.pollServer = function() {
-    if ( this.me.name ) {
-        getMyModel(this.me.name, this.updateFromServer.bind(this));
-    } else {
-        getModel(this.updateFromServerFullModel.bind(this));
-    }
+    getMyModel(this.me.name, this.updateFromServer.bind(this));
     setTimeout(this.pollServer.bind(this), 2500);
-};
-
-Model.prototype.updateFromServerFullModel = function(ok, data) {
-    this.game.update("", "NotJoined", data.Players, data.CardsPerPlayer);
-    this.round.update("", "NotJoined", null, null, null, null, null);
 };
 
 Model.prototype.updateFromServer = function(ok, data) {
