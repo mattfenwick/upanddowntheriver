@@ -243,7 +243,7 @@ Game.prototype.setCardsPerPlayer = function(cardsPerPlayer) {
 // round
 
 function Round(didChooseWager, didClickStartHand, didClickFinishRound) {
-    // this.roundDiv = $("#round");
+    this.div = $("#round");
     this.finishButton = $("#round-finish");
     this.cardsTable = $("#round-cards");
     this.wagersTable = $("#round-wagers");
@@ -252,7 +252,7 @@ function Round(didChooseWager, didClickStartHand, didClickFinishRound) {
     this.wagerButton = $("#round-wager-button");
     this.trumpSuitDiv = $("#round-suit");
     this.trumpContainer = $("#round-suit-container");
-    this.wagerContainer = $("#round-wager");
+    this.wagerContainer = $("#round-make-wager");
     this.startHandButton = $("#round-start-hand");
 
     let self = this;
@@ -318,22 +318,13 @@ Round.prototype.setRoundState = function(state) {
     console.log(`setting round state to ${state}`);
     switch (state) {
         case "NotJoined":
-            this.cardsTable.hide();
-            this.finishButton.hide();
-            this.startHandButton.hide();
-            this.trumpContainer.hide();
-            this.wagerContainer.hide();
-            this.wagersTable.hide();
+            this.div.hide();
             break;
         case "WaitingForPlayers":
-            this.cardsTable.hide();
-            this.finishButton.hide();
-            this.startHandButton.hide();
-            this.trumpContainer.hide();
-            this.wagerContainer.hide();
-            this.wagersTable.hide();
+            this.div.hide();
             break;
         case "RoundWagerTurn":
+            this.div.show();
             this.cardsTable.show();
             this.finishButton.hide();
             this.startHandButton.hide();
@@ -342,6 +333,7 @@ Round.prototype.setRoundState = function(state) {
             this.wagersTable.show();
             break;
         case "RoundHandReady":
+            this.div.show();
             this.cardsTable.show();
             this.finishButton.hide();
             this.startHandButton.show();
@@ -350,6 +342,7 @@ Round.prototype.setRoundState = function(state) {
             this.wagersTable.show();
             break;
         case "HandPlayTurn":
+            this.div.show();
             this.cardsTable.show();
             this.finishButton.hide();
             this.startHandButton.hide();
@@ -358,7 +351,8 @@ Round.prototype.setRoundState = function(state) {
             this.wagersTable.show();
             break;
         case "HandFinished":
-            this.cardsTable.show();
+            this.div.show();
+            this.cardsTable.hide();
             this.finishButton.hide();
             this.startHandButton.hide();
             this.trumpContainer.show();
@@ -366,7 +360,13 @@ Round.prototype.setRoundState = function(state) {
             this.wagersTable.show();
             break;
         case "RoundFinished":
+            this.div.show();
+            this.cardsTable.hide();
             this.finishButton.show();
+            this.startHandButton.hide();
+            this.trumpContainer.show();
+            this.wagerContainer.hide();
+            this.wagersTable.show();
             break;
         default:
             throw new Error(`invalid round state ${state}`);
@@ -439,6 +439,7 @@ function Hand(didClickPlayCard, didClickFinishHand) {
     this.nextPlayer = "";
     this.myCards = [];
 
+    this.div = $("#hand");
     this.suitDiv = $("#hand-suit");
     this.leaderContainer = $("#hand-leader-container");
     this.leaderPlayerDiv = $("#hand-leader-player");
@@ -556,34 +557,19 @@ Hand.prototype.setState = function(state) {
     console.log(`setting hand state to ${state}`);
     switch (state) {
         case "NotJoined":
-            this.suitDiv.hide();
-            this.leaderContainer.hide();
-            this.cardsPlayedTable.hide();
-            this.playContainer.hide();
-            this.finishButton.hide();
+            this.div.hide();
             break;
         case "WaitingForPlayers":
-            this.suitDiv.hide();
-            this.leaderContainer.hide();
-            this.cardsPlayedTable.hide();
-            this.playContainer.hide();
-            this.finishButton.hide();
+            this.div.hide();
             break;
         case "RoundWagerTurn":
-            this.suitDiv.hide();
-            this.leaderContainer.hide();
-            this.cardsPlayedTable.hide();
-            this.playContainer.hide();
-            this.finishButton.hide();
+            this.div.hide();
             break;
         case "RoundHandReady":
-            this.suitDiv.hide();
-            this.leaderContainer.hide();
-            this.cardsPlayedTable.hide();
-            this.playContainer.hide();
-            this.finishButton.hide();
+            this.div.hide();
             break;
         case "HandPlayTurn":
+            this.div.show();
             this.suitDiv.show();
             this.leaderContainer.show();
             this.cardsPlayedTable.show();
@@ -591,6 +577,7 @@ Hand.prototype.setState = function(state) {
             this.finishButton.hide();
             break;
         case "HandFinished":
+            this.div.show();
             this.suitDiv.show();
             this.leaderContainer.show();
             this.cardsPlayedTable.show();
@@ -598,6 +585,7 @@ Hand.prototype.setState = function(state) {
             this.finishButton.show();
             break;
         case "RoundFinished":
+            this.div.show();
             this.suitDiv.hide();
             this.leaderContainer.hide();
             this.cardsPlayedTable.hide();
