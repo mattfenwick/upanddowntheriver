@@ -250,8 +250,7 @@ function Round(didChooseWager, didClickStartHand, didClickFinishRound) {
     this.wagersTableBody = $("#round-wagers tbody");
     this.wagerSelect = $("#round-wager-select");
     this.wagerButton = $("#round-wager-button");
-    this.trumpSuitDiv = $("#round-suit");
-    this.trumpContainer = $("#round-suit-container");
+    this.trumpContainer = $("#round-suit");
     this.wagerContainer = $("#round-make-wager");
     this.startHandButton = $("#round-start-hand");
 
@@ -294,8 +293,12 @@ Round.prototype.update = function(me, state, trumpSuit, cards, wagers, nextWager
 Round.prototype.setTrumpSuit = function(trumpSuit) {
     if ( this.trumpSuit === trumpSuit ) { return; }
     this.trumpSuit = trumpSuit;
-    this.trumpSuitDiv.empty();
-    this.trumpSuitDiv.append(trumpSuit);
+    this.trumpContainer.empty();
+    let [color, symbol] = suitToUnicode[trumpSuit];
+    let klazz = `suit-${color}`;
+    for ( let i = 0; i < 5; i++ ) {
+        this.trumpContainer.append(`<div class="trump-suit ${klazz}">${symbol}</div>`);
+    }
 };
 
 Round.prototype.setNextWagerPlayer = function(player) {
@@ -352,7 +355,7 @@ Round.prototype.setRoundState = function(state) {
             break;
         case "HandFinished":
             this.div.show();
-            this.cardsTable.hide();
+            this.cardsTable.show();
             this.finishButton.hide();
             this.startHandButton.hide();
             this.trumpContainer.show();
@@ -383,10 +386,10 @@ let suitToUnicode = {
 function Card(suit, number) {
     let [color, symbol] = suitToUnicode[suit];
     let klazz = `suit-${color}`;
-    return `<div class="round-card">
+    return `<div class="round-card wrapper-vertical ${klazz}">
             <div>${number}</div>
-            <div class="${klazz}">${symbol}</div>
-        </div>`
+            <div>${symbol}</div>
+        </div>`;
 }
 
 Round.prototype.setCards = function(cards) {
@@ -410,7 +413,7 @@ Round.prototype.setCards = function(cards) {
         cardsBySuit[suit].forEach(function(number) {
             suitDivs.push(Card(suit, number));
         });
-        let row = `<div class="round-suit">${suitDivs.join("\n")}</div>`;
+        let row = `<div class="wrapper-horizontal">${suitDivs.join("\n")}</div>`;
         self.cardsTable.append(row);
     });
 };
@@ -457,9 +460,6 @@ function Hand(didClickPlayCard, didClickFinishHand) {
 
     this.div = $("#hand");
     this.suitDiv = $("#hand-suit");
-    this.leaderContainer = $("#hand-leader-container");
-    this.leaderPlayerDiv = $("#hand-leader-player");
-    this.leaderCardDiv = $("#hand-leader-card");
     this.cardsPlayedTable = $("#hand-cards");
     this.cardsPlayedTableBody = $("#hand-cards tbody");
     this.playContainer = $("#hand-play-container");
@@ -525,23 +525,23 @@ Hand.prototype.setNextPlayer = function(player) {
 Hand.prototype.setSuit = function(suit) {
     if ( this.suit === suit ) { return; }
     this.suit = suit;
+    if ( !suit ) { return; }
     this.suitDiv.empty();
-    this.suitDiv.append(`Suit: ${suit}`);
+    let [color, symbol] = suitToUnicode[suit];
+    let klazz = `suit-${color}`;
+    for ( let i = 0; i < 3; i++ ) {
+        this.suitDiv.append(`<div class="hand-suit ${klazz}">${symbol}</div>`);
+    }
 };
 
 Hand.prototype.setLeader = function(leader) {
     if ( this.leader === leader ) { return; }
     this.leader = leader;
-    this.leaderPlayerDiv.empty();
-    this.leaderPlayerDiv.append(`Leader: ${leader}`);
 };
 
 Hand.prototype.setLeaderCard = function(leaderCard) {
     if ( equals(this.leaderCard, leaderCard) ) { return; }
     this.leaderCard = leaderCard;
-    this.leaderCardDiv.empty();
-    if ( !leaderCard ) { return; }
-    this.leaderCardDiv.append(`Leader card: ${leaderCard.Number} of ${leaderCard.Suit}`);
 };
 
 Hand.prototype.setCardsPlayed = function(cardsPlayed) {
@@ -553,9 +553,9 @@ Hand.prototype.setCardsPlayed = function(cardsPlayed) {
         let player = playedCard.Player;
         let card = playedCard.Card;
         let desc = card ? Card(playedCard.Card.Suit, playedCard.Card.Number) : "";
-        let style = (player === self.me) ? 'style="border: 1px dashed; padding: 8px; margin: 4px;"' : '';
+        let klazz = (player === self.leader) ? 'hand-leader' : 'hand-not-leader';
         self.cardsPlayedTableBody.append(`
-            <tr ${style}>
+            <tr class="${klazz}">
                 <td>
                 ${player}
                 </td>
@@ -587,7 +587,6 @@ Hand.prototype.setState = function(state) {
         case "HandPlayTurn":
             this.div.show();
             this.suitDiv.show();
-            this.leaderContainer.show();
             this.cardsPlayedTable.show();
             // this.playContainer.show(); // this gets handled by setNextPlayer()
             this.finishButton.hide();
@@ -595,7 +594,6 @@ Hand.prototype.setState = function(state) {
         case "HandFinished":
             this.div.show();
             this.suitDiv.show();
-            this.leaderContainer.show();
             this.cardsPlayedTable.show();
             this.playContainer.hide();
             this.finishButton.show();
@@ -603,7 +601,6 @@ Hand.prototype.setState = function(state) {
         case "RoundFinished":
             this.div.show();
             this.suitDiv.hide();
-            this.leaderContainer.hide();
             this.cardsPlayedTable.hide();
             this.playContainer.hide();
             this.finishButton.hide();

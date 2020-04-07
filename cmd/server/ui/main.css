@@ -4,14 +4,20 @@ table {
     margin: 4px;
 }
 
-#round-cards {
+.wrapper-horizontal {
+    display: flex;
+    flex-direction: row;
+}
+
+.wrapper-vertical {
     display: flex;
     flex-direction: column;
 }
 
-.round-suit {
-    display: flex;
-    flex-direction: row;
+.wrapper-vertical, .wrapper-horizontal {
+    border: 1px dashed;
+    padding: 8px;
+    margin: 4px;
 }
 
 .round-card {
@@ -22,7 +28,7 @@ table {
     padding: 8px;
     margin: 4px;
     text-align: center;
-    width: 40px;
+    min-width: 40px;
 }
 
 .suit-red {
@@ -32,6 +38,43 @@ table {
 .suit-black {
     color: black;
 }
+
+.trump-suit {
+    font-size: xx-large;
+}
+
+.hand-suit {
+    font-size: x-large;
+}
+
+#hand-suit, #round-suit {
+    justify-content: center;
+}
+
+#hand-suit > div, #round-suit > div {
+    padding: 8px;
+    margin: 4px;
+}
+
+.hand-leader {
+    border: 1px dashed;
+    padding: 8px;
+    margin: 4px;
+    color: red;
+    background-color: lightgreen;
+}
+
+.hand-not-leader {
+
+}
+
+
+/* TODO use this for cards
+   ace of spades: $("div").append("\uD83C\uDCA1")
+   https://en.wikipedia.org/wiki/Playing_cards_in_Unicode */
+/*div {*/
+/*    font-size: 200px;*/
+/*}*/
 
 /*#container {*/
 /*    width: 100px;*/

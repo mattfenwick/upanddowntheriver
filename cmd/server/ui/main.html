@@ -9,9 +9,9 @@
         <script src="./jquery-dev.js"></script>
         <script src="./main.js"></script>
 
-        <div id="container">
-            <div id="me" style="border: 1px dashed; padding: 8px; margin: 4px;">
-                <div id="me-get-name">
+        <div id="container" class="wrapper-vertical">
+            <div id="me" class="wrapper-vertical">
+                <div id="me-get-name" class="wrapper-vertical">
                     What's your name?
                     <input id="me-input-name" placeholder="what's your name?"/>
                     <button id="me-join">Join!</button>
@@ -20,79 +20,76 @@
             </div>
 
 
-            <div id="game" style="border: 1px dashed; padding: 8px; margin: 4px;">
-                Who's in the game?
-                <table id="game-players"></table>
+            <div id="game" class="wrapper-vertical">
+                <div class="wrapper-horizontal">
+                    <div class="wrapper-vertical">
+                        <div>Who's in the game?</div>
+                        <div id="game-players"></div>
+                    </div>
 
-                <div style="border: 1px dashed; padding: 8px; margin: 4px;">
-                    Cards per player:
-                    <select id="game-cards-per-player">
-                    </select>
+                    <div class="wrapper-vertical">
+                        <div>Cards per player:</div>
+                        <select id="game-cards-per-player"></select>
+                    </div>
                 </div>
-
-                <br />
 
                 <button id="game-round-start">Start Round!</button>
             </div>
 
 
-            <div id="round" style="border: 1px dashed; padding: 8px; margin: 4px;">
-                <div id="round-suit-container">
-                    Trump suit:
-                    <div id="round-suit"></div>
+            <div id="round" class="wrapper-vertical">
+
+                <div id="round-suit" class="wrapper-horizontal"></div>
+
+                <div class="wrapper-horizontal">
+                    <div id="round-cards"></div>
+
+                    <div class="wrapper-vertical">
+                        <table id="round-wagers">
+                            <caption>Wagers</caption>
+                            <thead>
+                            <th></th>
+                            <th>Wager</th>
+                            <th>Hands won</th>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                        <div id="round-button-container" class="wrapper-vertical">
+                            <div id="round-make-wager">
+                                <button id="round-wager-button">Place your wager!</button>
+                                <select id="round-wager-select"></select>
+                            </div>
+
+                            <button id="round-start-hand">Start Hand</button>
+
+                            <button id="round-finish">Finish Round</button>
+                        </div>
+                    </div>
+
+                    <div id="hand">
+                        <div id="hand-suit" class="wrapper-horizontal"></div>
+
+                        <table id="hand-cards">
+                            <caption>Current Hand</caption>
+                            <thead>
+                            <th></th>
+                            <th></th>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+                        <div id="hand-play-container">
+                            It's your turn!
+                            <select id="hand-play-select"></select>
+                            <button id="hand-play-button">Play this card!</button>
+                        </div>
+
+                        <button id="hand-finish-button">Finish Hand</button>
+
+                    </div>
                 </div>
-
-                <div id="round-cards">
-                    <!-- <caption>Cards</caption> -->
-                </div>
-
-                <div id="round-make-wager">
-                    <button id="round-wager-button">Place your wager!</button>
-                    <select id="round-wager-select"></select>
-                </div>
-
-                <table id="round-wagers">
-                    <caption>Wagers</caption>
-                    <thead>
-                        <th>Player</th>
-                        <th>Wager</th>
-                        <th>Hands won</th>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-
-                <button id="round-start-hand">Start Hand</button>
-
-                <button id="round-finish">Finish Round</button>
             </div>
 
-
-            <div id="hand" style="border: 1px dashed; padding: 8px; margin: 4px;">
-                <div id="hand-suit"></div>
-
-                <div id="hand-leader-container">
-                    <div id="hand-leader-player"></div>
-                    <div id="hand-leader-card"></div>
-                </div>
-
-                <table id="hand-cards">
-                    <caption>Cards Played</caption>
-                    <thead>
-                        <th>Player</th>
-                        <th>Card</th>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-
-                <div id="hand-play-container">
-                    It's your turn!
-                    <select id="hand-play-select"></select>
-                    <button id="hand-play-button">Play this card!</button>
-                </div>
-
-                <button id="hand-finish-button">Finish Hand</button>
-
-            </div>
         </div>
     </body>
 </html>
