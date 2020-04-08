@@ -49,7 +49,7 @@ table {
 }
 */
 
-.round-card {
+.round-card-style {
     display: flex;
     flex-direction: column;
     font-size: xx-large;
@@ -58,6 +58,10 @@ table {
     margin: 4px;
     text-align: center;
     min-width: 40px;
+}
+
+.round-card-unicode-style > div {
+    font-size: 100px;
 }
 
 .round-my-turn {

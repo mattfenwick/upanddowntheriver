@@ -2,6 +2,71 @@
 
 $(document).ready(function() {
 
+// javascript card characters
+
+let unicodeCards = {
+    "Clubs": {
+        "2" : "\uD83C\uDCD2",
+        "3" : "\uD83C\uDCD3",
+        "4" : "\uD83C\uDCD4",
+        "5" : "\uD83C\uDCD5",
+        "6" : "\uD83C\uDCD6",
+        "7" : "\uD83C\uDCD7",
+        "8" : "\uD83C\uDCD8",
+        "9" : "\uD83C\uDCD9",
+        "10": "\uD83C\uDCDA",
+        "J" : "\uD83C\uDCDB",
+        "Q" : "\uD83C\uDCDD",
+        "K" : "\uD83C\uDCDE",
+        "A" : "\uD83C\uDCD1",
+    },
+    "Diamonds": {
+        "2" : "\uD83C\uDCC2",
+        "3" : "\uD83C\uDCC3",
+        "4" : "\uD83C\uDCC4",
+        "5" : "\uD83C\uDCC5",
+        "6" : "\uD83C\uDCC6",
+        "7" : "\uD83C\uDCC7",
+        "8" : "\uD83C\uDCC8",
+        "9" : "\uD83C\uDCC9",
+        "10": "\uD83C\uDCCA",
+        "J" : "\uD83C\uDCCB",
+        "Q" : "\uD83C\uDCCD",
+        "K" : "\uD83C\uDCCE",
+        "A" : "\uD83C\uDCC1",
+    },
+    "Hearts": {
+        "2" : "\uD83C\uDCB2",
+        "3" : "\uD83C\uDCB3",
+        "4" : "\uD83C\uDCB4",
+        "5" : "\uD83C\uDCB5",
+        "6" : "\uD83C\uDCB6",
+        "7" : "\uD83C\uDCB7",
+        "8" : "\uD83C\uDCB8",
+        "9" : "\uD83C\uDCB9",
+        "10": "\uD83C\uDCBA",
+        "J" : "\uD83C\uDCBB",
+        "Q" : "\uD83C\uDCBD",
+        "K" : "\uD83C\uDCBE",
+        "A" : "\uD83C\uDCB1",
+    },
+    "Spades": {
+        "2" : "\uD83C\uDCA2",
+        "3" : "\uD83C\uDCA3",
+        "4" : "\uD83C\uDCA4",
+        "5" : "\uD83C\uDCA5",
+        "6" : "\uD83C\uDCA6",
+        "7" : "\uD83C\uDCA7",
+        "8" : "\uD83C\uDCA8",
+        "9" : "\uD83C\uDCA9",
+        "10": "\uD83C\uDCAA",
+        "J" : "\uD83C\uDCAB",
+        "Q" : "\uD83C\uDCAD",
+        "K" : "\uD83C\uDCAE",
+        "A" : "\uD83C\uDCA1",
+    }
+};
+
 // network actions
 
 // function getModel(cont) {
@@ -368,13 +433,24 @@ let suitToUnicode = {
     'Spades': ['black', '\u2660'],
 };
 
+const useUnicodeCard = true;
+
 function Card(suit, number) {
-    let [color, symbol] = suitToUnicode[suit];
-    let klazz = `suit-${color}`;
-    return `<div class="round-card wrapper-vertical ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
+    if ( useUnicodeCard ) {
+        let symbol = unicodeCards[suit][number];
+        let [color, _] = suitToUnicode[suit];
+        let klazz = `suit-${color}`;
+        return `<div class="round-card round-card-unicode-style ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
+            <div>${symbol}</div>
+        </div>`;
+    } else {
+        let [color, symbol] = suitToUnicode[suit];
+        let klazz = `suit-${color}`;
+        return `<div class="round-card round-card-style wrapper-vertical ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
             <div>${number}</div>
             <div>${symbol}</div>
         </div>`;
+    }
 }
 
 Round.prototype.setCards = function(cards) {
