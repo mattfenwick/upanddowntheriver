@@ -138,6 +138,7 @@ function Game(didClickRemovePlayer, didChangeCardsPerPlayer, didClickStart) {
     this.players = [];
     this.cardsPerPlayer = null;
 
+    this.div = $("#game");
     this.startButton = $("#game-round-start");
     this.startButton.click(didClickStart);
 
@@ -156,6 +157,7 @@ function Game(didClickRemovePlayer, didChangeCardsPerPlayer, didClickStart) {
         self.cardsPerPlayer = newCardsPerPlayer;
         didChangeCardsPerPlayer(newCardsPerPlayer);
     });
+    this.cardsPerPlayerContainer = $("#card-per-player-container");
 
     this.setState("WaitingForPlayers");
 }
@@ -171,27 +173,32 @@ Game.prototype.setState = function(state) {
     console.log(`updating game state to ${state}`);
     switch (state) {
         case "NotJoined":
+            this.div.show();
             $(".game-remove-player").hide();
-            this.startButton.prop('disabled', true);
-            this.cardsPerPlayerSelect.prop('disabled', true);
+            this.startButton.hide();
+            this.cardsPerPlayerContainer.hide();
             break;
         case "WaitingForPlayers":
+            this.div.show();
             $(".game-remove-player").show();
             this.startButton.prop('disabled', this.players.length < 2);
-            this.cardsPerPlayerSelect.prop('disabled', false);
+            this.startButton.show();
+            this.cardsPerPlayerContainer.show();
             break;
         case "RoundWagerTurn":
-            $(".game-remove-player").hide();
-            this.startButton.prop('disabled', true);
-            this.cardsPerPlayerSelect.prop('disabled', true);
+            this.div.hide();
             break;
         case "RoundHandReady":
+            this.div.hide();
             break;
         case "HandPlayTurn":
+            this.div.hide();
             break;
         case "HandFinished":
+            this.div.hide();
             break;
         case "RoundFinished":
+            this.div.hide();
             break;
         default:
             throw new Error("unrecognized game state: " + state)
@@ -242,9 +249,8 @@ Game.prototype.setCardsPerPlayer = function(cardsPerPlayer) {
 
 // round
 
-function Round(didChooseWager, didClickStartHand, didClickFinishRound) {
+function Round(didChooseWager, didClickPlayCard) {
     this.div = $("#round");
-    this.finishButton = $("#round-finish");
     this.cardsTable = $("#round-cards");
     this.wagersTable = $("#round-wagers");
     this.wagersTableBody = $("#round-wagers tbody");
@@ -252,29 +258,35 @@ function Round(didChooseWager, didClickStartHand, didClickFinishRound) {
     this.wagerButton = $("#round-wager-button");
     this.trumpContainer = $("#round-suit");
     this.wagerContainer = $("#round-make-wager");
-    this.startHandButton = $("#round-start-hand");
 
     let self = this;
     this.wagerButton.click(function() {
         let wager = parseInt(self.wagerSelect.val(), 10);
         didChooseWager(wager);
     });
-    this.finishButton.click(didClickFinishRound);
-    this.startHandButton.click(didClickStartHand);
+
+    $(document).on("click", ".round-card", function() {
+        let suit = $(this).attr('uadtr-card-suit');
+        let number = $(this).attr('uadtr-card-number');
+        let card = {'Suit': suit, 'Number': number};
+        console.log(`round-play-card: ${card}`);
+        didClickPlayCard(card);
+    });
 
     this.me = "";
     this.nextWagerPlayer = "";
     this.trumpSuit = "";
     this.state = "";
+    this.nextHandPlayer = "";
 
     this.setRoundState("WaitingForPlayers");
     this.setCards([]);
     this.setWagers([], []);
 }
 
-Round.prototype.update = function(me, state, trumpSuit, cards, wagers, nextWagerPlayer, wagerSum) {
-    // TODO do something wagerSum ?
+Round.prototype.update = function(me, state, trumpSuit, cards, wagers, nextWagerPlayer, nextHandPlayer) {
     this.me = me;
+    this.setNextHandPlayer(nextHandPlayer);
     if ( cards ) {
         this.setCards(cards);
     }
@@ -287,6 +299,18 @@ Round.prototype.update = function(me, state, trumpSuit, cards, wagers, nextWager
     this.setRoundState(state);
     if ( nextWagerPlayer ) {
         this.setNextWagerPlayer(nextWagerPlayer);
+    }
+};
+
+Round.prototype.setNextHandPlayer = function(nextHandPlayer) {
+    if ( nextHandPlayer === this.nextHandPlayer ) { return; }
+    this.nextHandPlayer = nextHandPlayer;
+    if ( nextHandPlayer === this.me ) {
+        $('.round-card').css('pointer-events', 'auto');
+        this.cardsTable.addClass("round-my-turn");
+    } else {
+        $('.round-card').css('pointer-events', 'none');
+        this.cardsTable.removeClass("round-my-turn");
     }
 };
 
@@ -321,55 +345,16 @@ Round.prototype.setRoundState = function(state) {
     console.log(`setting round state to ${state}`);
     switch (state) {
         case "NotJoined":
-            this.div.hide();
-            break;
         case "WaitingForPlayers":
             this.div.hide();
             break;
         case "RoundWagerTurn":
-            this.div.show();
-            this.cardsTable.show();
-            this.finishButton.hide();
-            this.startHandButton.hide();
-            this.trumpContainer.show();
-            this.wagerContainer.hide();
-            this.wagersTable.show();
-            break;
         case "RoundHandReady":
-            this.div.show();
-            this.cardsTable.show();
-            this.finishButton.hide();
-            this.startHandButton.show();
-            this.trumpContainer.show();
-            this.wagerContainer.hide();
-            this.wagersTable.show();
-            break;
         case "HandPlayTurn":
-            this.div.show();
-            this.cardsTable.show();
-            this.finishButton.hide();
-            this.startHandButton.hide();
-            this.trumpContainer.show();
-            this.wagerContainer.hide();
-            this.wagersTable.show();
-            break;
         case "HandFinished":
-            this.div.show();
-            this.cardsTable.show();
-            this.finishButton.hide();
-            this.startHandButton.hide();
-            this.trumpContainer.show();
-            this.wagerContainer.hide();
-            this.wagersTable.show();
-            break;
         case "RoundFinished":
             this.div.show();
-            this.cardsTable.hide();
-            this.finishButton.show();
-            this.startHandButton.hide();
-            this.trumpContainer.show();
-            this.wagerContainer.hide();
-            this.wagersTable.show();
+            this.wagerContainer.hide(); // TODO ugh figure out why this is necessary. what a hack
             break;
         default:
             throw new Error(`invalid round state ${state}`);
@@ -386,7 +371,7 @@ let suitToUnicode = {
 function Card(suit, number) {
     let [color, symbol] = suitToUnicode[suit];
     let klazz = `suit-${color}`;
-    return `<div class="round-card wrapper-vertical ${klazz}">
+    return `<div class="round-card wrapper-vertical ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
             <div>${number}</div>
             <div>${symbol}</div>
         </div>`;
@@ -448,7 +433,7 @@ Round.prototype.setWagers = function(wagers) {
 
 // hand
 
-function Hand(didClickPlayCard, didClickFinishHand) {
+function Hand(didClickStartHand, didClickFinishHand, didClickFinishRound) {
     this.me = "";
     this.state = "";
     this.suit = "";
@@ -456,28 +441,24 @@ function Hand(didClickPlayCard, didClickFinishHand) {
     this.leaderCard = null;
     this.cardsPlayed = [];
     this.nextPlayer = "";
-    this.myCards = [];
 
     this.div = $("#hand");
     this.suitDiv = $("#hand-suit");
     this.cardsPlayedTable = $("#hand-cards");
     this.cardsPlayedTableBody = $("#hand-cards tbody");
-    this.playContainer = $("#hand-play-container");
-    this.playSelect = $("#hand-play-select");
-    this.playButton = $("#hand-play-button");
-    this.finishButton = $("#hand-finish-button");
+
+    this.startHandButton = $("#round-start-hand");
+    this.finishHandButton = $("#hand-finish-button");
+    this.finishRoundButton = $("#round-finish");
 
     this.setState("NotJoined");
 
-    let self = this;
-    this.playButton.click(function() {
-        let i = parseInt(self.playSelect.val(), 10);
-        didClickPlayCard(self.myCards[i]);
-    });
-    this.finishButton.click(didClickFinishHand);
+    this.startHandButton.click(didClickStartHand);
+    this.finishHandButton.click(didClickFinishHand);
+    this.finishRoundButton.click(didClickFinishRound);
 }
 
-Hand.prototype.update = function(me, state, suit, leader, leaderCard, cardsPlayed, nextPlayer, myCards) {
+Hand.prototype.update = function(me, state, suit, leader, leaderCard, cardsPlayed, nextPlayer) {
     this.me = me;
     this.setState(state);
     // if ( suit ) {
@@ -492,41 +473,21 @@ Hand.prototype.update = function(me, state, suit, leader, leaderCard, cardsPlaye
     // if ( cardsPlayed ) {
         this.setCardsPlayed(cardsPlayed);
     // }
-    // if ( myCards ) {
-        this.setMyCards(myCards);
-    // }
     // if ( nextPlayer ) {
         this.setNextPlayer(nextPlayer);
     // }
 };
 
-Hand.prototype.setMyCards = function(myCards) {
-    if ( equals(myCards, this.myCards) ) { return; }
-    this.myCards = myCards;
-};
-
 Hand.prototype.setNextPlayer = function(player) {
     if ( this.nextPlayer === player ) { return; }
     this.nextPlayer = player;
-
-    if ( player === this.me && this.state === "HandPlayTurn" ) {
-        this.playSelect.empty();
-        for ( let i = 0; i < this.myCards.length; i++ ) {
-            let card = this.myCards[i];
-            let desc = `${card.Number} of ${card.Suit}`;
-            this.playSelect.append(`<option value="${i}">${desc}</option>`);
-        }
-        this.playContainer.show();
-    } else {
-        this.playContainer.hide();
-    }
 };
 
 Hand.prototype.setSuit = function(suit) {
     if ( this.suit === suit ) { return; }
     this.suit = suit;
-    if ( !suit ) { return; }
     this.suitDiv.empty();
+    if ( !suit ) { return; }
     let [color, symbol] = suitToUnicode[suit];
     let klazz = `suit-${color}`;
     for ( let i = 0; i < 3; i++ ) {
@@ -582,28 +543,34 @@ Hand.prototype.setState = function(state) {
             this.div.hide();
             break;
         case "RoundHandReady":
-            this.div.hide();
+            this.div.show();
+            this.startHandButton.show();
+            this.finishHandButton.hide();
+            this.finishRoundButton.hide();
             break;
         case "HandPlayTurn":
             this.div.show();
             this.suitDiv.show();
             this.cardsPlayedTable.show();
-            // this.playContainer.show(); // this gets handled by setNextPlayer()
-            this.finishButton.hide();
+            this.startHandButton.hide();
+            this.finishHandButton.hide();
+            this.finishRoundButton.hide();
             break;
         case "HandFinished":
             this.div.show();
             this.suitDiv.show();
             this.cardsPlayedTable.show();
-            this.playContainer.hide();
-            this.finishButton.show();
+            this.startHandButton.hide();
+            this.finishHandButton.show();
+            this.finishRoundButton.hide();
             break;
         case "RoundFinished":
             this.div.show();
             this.suitDiv.hide();
             this.cardsPlayedTable.hide();
-            this.playContainer.hide();
-            this.finishButton.hide();
+            this.startHandButton.hide();
+            this.finishHandButton.hide();
+            this.finishRoundButton.show();
             break;
         default:
             throw new Error(`invalid hand state ${state}`);
@@ -634,21 +601,21 @@ function Model() {
     function didChooseWager(wager) {
         self.makeWager(wager);
     }
-    function didClickStartHand() {
-        self.startHand();
-    }
-    function didClickFinishRound() {
-        self.finishRound();
-    }
-    this.round = new Round(didChooseWager, didClickStartHand, didClickFinishRound);
-
     function didClickPlayCard(card) {
         self.playCard(card);
+    }
+    this.round = new Round(didChooseWager, didClickPlayCard);
+
+    function didClickStartHand() {
+        self.startHand();
     }
     function didClickFinishHand() {
         self.finishHand();
     }
-    this.hand = new Hand(didClickPlayCard, didClickFinishHand);
+    function didClickFinishRound() {
+        self.finishRound();
+    }
+    this.hand = new Hand(didClickStartHand, didClickFinishHand, didClickFinishRound);
 
     this.pollServer();
 }
@@ -668,13 +635,13 @@ Model.prototype.updateFromServer = function(ok, data) {
     this.game.update(me, data.State, game.Players, game.CardsPerPlayer);
 
     let round = data.Round;
+    let hand = data.Hand;
     if ( round ) {
-        this.round.update(me, data.State, round.TrumpSuit, round.Cards, round.Wagers, round.NextWagerPlayer);
+        this.round.update(me, data.State, round.TrumpSuit, round.Cards, round.Wagers, round.NextWagerPlayer, hand ? hand.NextPlayer : null);
     } else {
         this.round.update(me, data.State, null, null, null, null);
     }
 
-    let hand = data.Hand;
     if ( hand ) {
         this.hand.update(me, data.State, hand.Suit, hand.Leader, hand.LeaderCard, hand.CardsPlayed, hand.NextPlayer, hand.Cards);
     } else {

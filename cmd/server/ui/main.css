@@ -1,3 +1,20 @@
+#me-get-name * {
+    font-size: large;
+    padding: 4px;
+    margin: 4px;
+}
+
+#me-show-name {
+    text-align: center;
+    font-size: xx-large;
+    border-bottom: 1px dashed;
+}
+
+#round-suit {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
 table {
     border: 1px dashed;
     padding: 8px;
@@ -14,11 +31,23 @@ table {
     flex-direction: column;
 }
 
+#current-hand {
+    text-align: center;
+}
+
+#cards-hand-wagers {
+    display: flex;
+    justify-content: space-between;
+    /*flex: 1;*/
+}
+
+/*
 .wrapper-vertical, .wrapper-horizontal {
     border: 1px dashed;
     padding: 8px;
     margin: 4px;
 }
+*/
 
 .round-card {
     display: flex;
@@ -29,6 +58,10 @@ table {
     margin: 4px;
     text-align: center;
     min-width: 40px;
+}
+
+.round-my-turn {
+    border: 2px dashed red;
 }
 
 .suit-red {
