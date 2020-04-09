@@ -20,7 +20,7 @@
     margin-bottom: 10px;
 }
 
-#hand, #round-wagers, #round-cards {
+#hand, #wagers {/*, #round-cards { */
     border: 1px dashed;
     padding: 8px;
     margin: 4px;
@@ -73,11 +73,11 @@
     border: 2px dashed red;
 }
 
-#round-wagers {
+#wagers {
     font-size: large;
 }
 
-#round-wagers th, #round-wagers td {
+#wagers th, #wagers td {
     /* TODO this doesn't seem to do anything? margin: 8px; */
     padding: 10px;
     text-align: center;
