@@ -15,7 +15,7 @@
     margin: 4px;
 }
 
-#round-suit {
+#trump-suit {
     margin-top: 10px;
     margin-bottom: 10px;
 }
@@ -83,6 +83,10 @@
     text-align: center;
 }
 
+#wagers button, #wagers select {
+    font-size: x-large;
+}
+
 .suit-red {
     color: red;
 }
@@ -99,11 +103,11 @@
     font-size: x-large;
 }
 
-#hand-suit, #round-suit {
+#hand-suit, #trump-suit {
     justify-content: center;
 }
 
-#hand-suit > div, #round-suit > div {
+#hand-suit > div, #trump-suit > div {
     padding: 8px;
     margin: 4px;
 }

@@ -362,7 +362,9 @@ MyCards.prototype.update = function(me, cards, nextHandPlayer) {
     if ( cards ) {
         this.setCards(cards);
     }
-    this.setNextHandPlayer(nextHandPlayer);
+    if ( nextHandPlayer ) {
+        this.setNextHandPlayer(nextHandPlayer);
+    }
 };
 
 MyCards.prototype.setNextHandPlayer = function(nextHandPlayer) {
@@ -405,12 +407,13 @@ MyCards.prototype.setCards = function(cards) {
 
 // round
 
-function Round(didChooseWager, didClickPlayCard) {
+function Round(didChooseWager, didClickPlayCard, didClickStartHand, didClickFinishHand, didClickFinishRound) {
     this.div = $("#round");
     this.wagersTableBody = $("#wagers tbody");
-    this.trumpContainer = $("#round-suit");
+    this.trumpContainer = $("#trump-suit");
 
     this.myCards = new MyCards(didClickPlayCard);
+    this.hand = new Hand(didClickStartHand, didClickFinishHand, didClickFinishRound);
 
     $(document).on("click", "#place-wager-button", function() {
         let wager = parseInt($("#place-wager-select").val(), 10);
@@ -426,7 +429,7 @@ function Round(didChooseWager, didClickPlayCard) {
     this.setWagers([], "");
 }
 
-Round.prototype.update = function(me, state, trumpSuit, cards, wagers, nextWagerPlayer, nextHandPlayer, cardsPerPlayer) {
+Round.prototype.update = function(me, state, trumpSuit, cards, wagers, nextWagerPlayer, nextHandPlayer, cardsPerPlayer, hand) {
     this.me = me;
     this.myCards.update(me, cards, nextHandPlayer);
     this.cardsPerPlayer = cardsPerPlayer;
@@ -437,6 +440,11 @@ Round.prototype.update = function(me, state, trumpSuit, cards, wagers, nextWager
         this.setTrumpSuit(trumpSuit);
     }
     this.setRoundState(state);
+    if ( hand ) {
+        this.hand.update(me, state, hand.Suit, hand.Leader, hand.CardsPlayed);
+    } else {
+        this.hand.update(me, state, null, null, null);
+    }
 };
 
 Round.prototype.setTrumpSuit = function(trumpSuit) {
@@ -520,9 +528,7 @@ function Hand(didClickStartHand, didClickFinishHand, didClickFinishRound) {
     this.state = "";
     this.suit = "";
     this.leader = "";
-    this.leaderCard = null;
     this.cardsPlayed = [];
-    this.nextPlayer = "";
 
     this.div = $("#hand");
     this.suitDiv = $("#hand-suit");
@@ -540,7 +546,7 @@ function Hand(didClickStartHand, didClickFinishHand, didClickFinishRound) {
     this.finishRoundButton.click(didClickFinishRound);
 }
 
-Hand.prototype.update = function(me, state, suit, leader, leaderCard, cardsPlayed, nextPlayer) {
+Hand.prototype.update = function(me, state, suit, leader, cardsPlayed) {
     this.me = me;
     this.setState(state);
     // if ( suit ) {
@@ -549,20 +555,9 @@ Hand.prototype.update = function(me, state, suit, leader, leaderCard, cardsPlaye
     // if ( leader ) {
         this.setLeader(leader);
     // }
-    // if ( leaderCard ) {
-        this.setLeaderCard(leaderCard);
-    // }
-    // if ( cardsPlayed ) {
+    if ( cardsPlayed ) {
         this.setCardsPlayed(cardsPlayed);
-    // }
-    // if ( nextPlayer ) {
-        this.setNextPlayer(nextPlayer);
-    // }
-};
-
-Hand.prototype.setNextPlayer = function(player) {
-    if ( this.nextPlayer === player ) { return; }
-    this.nextPlayer = player;
+    }
 };
 
 Hand.prototype.setSuit = function(suit) {
@@ -580,11 +575,6 @@ Hand.prototype.setSuit = function(suit) {
 Hand.prototype.setLeader = function(leader) {
     if ( this.leader === leader ) { return; }
     this.leader = leader;
-};
-
-Hand.prototype.setLeaderCard = function(leaderCard) {
-    if ( equals(this.leaderCard, leaderCard) ) { return; }
-    this.leaderCard = leaderCard;
 };
 
 Hand.prototype.setCardsPlayed = function(cardsPlayed) {
@@ -686,8 +676,6 @@ function Model() {
     function didClickPlayCard(card) {
         self.playCard(card);
     }
-    this.round = new Round(didChooseWager, didClickPlayCard);
-
     function didClickStartHand() {
         self.startHand();
     }
@@ -697,7 +685,7 @@ function Model() {
     function didClickFinishRound() {
         self.finishRound();
     }
-    this.hand = new Hand(didClickStartHand, didClickFinishHand, didClickFinishRound);
+    this.round = new Round(didChooseWager, didClickPlayCard, didClickStartHand, didClickFinishHand, didClickFinishRound);
 
     this.pollServer();
 }
@@ -717,17 +705,19 @@ Model.prototype.updateFromServer = function(ok, data) {
     this.game.update(me, data.State, game.Players, game.CardsPerPlayer);
 
     let round = data.Round;
-    let hand = data.Hand;
     if ( round ) {
-        this.round.update(me, data.State, round.TrumpSuit, round.Cards, round.Wagers, round.NextWagerPlayer, hand ? hand.NextPlayer : null, game.CardsPerPlayer);
+        this.round.update(
+            me,
+            data.State,
+            round.TrumpSuit,
+            round.Cards,
+            round.Wagers,
+            round.NextWagerPlayer,
+            hand ? hand.NextPlayer : null,
+            game.CardsPerPlayer,
+            data.Hand);
     } else {
-        this.round.update(me, data.State, null, null, null, null, null);
-    }
-
-    if ( hand ) {
-        this.hand.update(me, data.State, hand.Suit, hand.Leader, hand.LeaderCard, hand.CardsPlayed, hand.NextPlayer, hand.Cards);
-    } else {
-        this.hand.update(me, data.State, "", "", null, [], "", []);
+        this.round.update(me, data.State, null, null, null, null, null, null);
     }
 };
 
