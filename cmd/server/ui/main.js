@@ -67,6 +67,33 @@ let unicodeCards = {
     }
 };
 
+let suitToUnicode = {
+    'Diamonds': ['red', '\u2666'],
+    'Hearts': ['red', '\u2665'],
+    'Clubs': ['black', '\u2663'],
+    'Spades': ['black', '\u2660'],
+};
+
+const useUnicodeCard = true;
+
+function Card(suit, number) {
+    if ( useUnicodeCard ) {
+        let symbol = unicodeCards[suit][number];
+        let [color, _] = suitToUnicode[suit];
+        let klazz = `suit-${color}`;
+        return `<div class="round-card round-card-unicode-style ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
+        <div>${symbol}</div>
+    </div>`;
+    } else {
+        let [color, symbol] = suitToUnicode[suit];
+        let klazz = `suit-${color}`;
+        return `<div class="round-card round-card-style wrapper-vertical ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
+        <div>${number}</div>
+        <div>${symbol}</div>
+    </div>`;
+    }
+}
+
 // network actions
 
 // function getModel(cont) {
@@ -317,16 +344,11 @@ Game.prototype.setCardsPerPlayer = function(cardsPerPlayer) {
 function Round(didChooseWager, didClickPlayCard) {
     this.div = $("#round");
     this.cardsTable = $("#round-cards");
-    this.wagersTable = $("#round-wagers");
     this.wagersTableBody = $("#round-wagers tbody");
-    this.wagerSelect = $("#round-wager-select");
-    this.wagerButton = $("#round-wager-button");
     this.trumpContainer = $("#round-suit");
-    this.wagerContainer = $("#round-make-wager");
 
-    let self = this;
-    this.wagerButton.click(function() {
-        let wager = parseInt(self.wagerSelect.val(), 10);
+    $(document).on("click", "#place-wager-button", function() {
+        let wager = parseInt($("#place-wager-select").val(), 10);
         didChooseWager(wager);
     });
 
@@ -346,7 +368,7 @@ function Round(didChooseWager, didClickPlayCard) {
 
     this.setRoundState("WaitingForPlayers");
     this.setCards([]);
-    this.setWagers([], []);
+    this.setWagers([], "");
 }
 
 Round.prototype.update = function(me, state, trumpSuit, cards, wagers, nextWagerPlayer, nextHandPlayer) {
@@ -356,15 +378,12 @@ Round.prototype.update = function(me, state, trumpSuit, cards, wagers, nextWager
         this.setCards(cards);
     }
     if ( wagers ) {
-        this.setWagers(wagers);
+        this.setWagers(wagers, nextWagerPlayer);
     }
     if ( trumpSuit ) {
         this.setTrumpSuit(trumpSuit);
     }
     this.setRoundState(state);
-    if ( nextWagerPlayer ) {
-        this.setNextWagerPlayer(nextWagerPlayer);
-    }
 };
 
 Round.prototype.setNextHandPlayer = function(nextHandPlayer) {
@@ -390,20 +409,6 @@ Round.prototype.setTrumpSuit = function(trumpSuit) {
     }
 };
 
-Round.prototype.setNextWagerPlayer = function(player) {
-    if ( player === this.nextWagerPlayer ) { return; }
-    this.nextWagerPlayer = player;
-    if ( player === this.me && this.state === "RoundWagerTurn" ) {
-        this.wagerSelect.empty();
-        for ( let i = 0; i <= this.cards.length; i++ ) {
-            this.wagerSelect.append(`<option value="${i}">${i}</option>`);
-        }
-        this.wagerContainer.show();
-    } else {
-        this.wagerContainer.hide();
-    }
-};
-
 Round.prototype.setRoundState = function(state) {
     if ( state === this.state ) { return; }
     this.state = state;
@@ -419,39 +424,11 @@ Round.prototype.setRoundState = function(state) {
         case "HandFinished":
         case "RoundFinished":
             this.div.show();
-            this.wagerContainer.hide(); // TODO ugh figure out why this is necessary. what a hack
             break;
         default:
             throw new Error(`invalid round state ${state}`);
     }
 };
-
-let suitToUnicode = {
-    'Diamonds': ['red', '\u2666'],
-    'Hearts': ['red', '\u2665'],
-    'Clubs': ['black', '\u2663'],
-    'Spades': ['black', '\u2660'],
-};
-
-const useUnicodeCard = true;
-
-function Card(suit, number) {
-    if ( useUnicodeCard ) {
-        let symbol = unicodeCards[suit][number];
-        let [color, _] = suitToUnicode[suit];
-        let klazz = `suit-${color}`;
-        return `<div class="round-card round-card-unicode-style ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
-            <div>${symbol}</div>
-        </div>`;
-    } else {
-        let [color, symbol] = suitToUnicode[suit];
-        let klazz = `suit-${color}`;
-        return `<div class="round-card round-card-style wrapper-vertical ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
-            <div>${number}</div>
-            <div>${symbol}</div>
-        </div>`;
-    }
-}
 
 Round.prototype.setCards = function(cards) {
     if ( equals(cards, this.cards) ) {
@@ -479,25 +456,39 @@ Round.prototype.setCards = function(cards) {
     });
 };
 
-Round.prototype.setWagers = function(wagers) {
-    if ( equals(this.wagers, wagers) ) {
+Round.prototype.setWagers = function(wagers, nextWagerPlayer) {
+    if ( equals(this.wagers, wagers) && ( nextWagerPlayer === this.nextWagerPlayer ) ) {
         return;
     }
+    this.nextWagerPlayer = nextWagerPlayer;
     this.wagers = wagers;
+
+    this.wagersTableBody.empty();
     let self = this;
-    self.wagersTableBody.empty();
     wagers.forEach(function(wager) {
         let player = wager.Player;
-        let wagerCount = (wager.Count !== null) ? wager.Count : "";
+        let wagerHtml = "";
+        if ( nextWagerPlayer === self.me && nextWagerPlayer === player ) {
+            let elems = [];
+            elems.push(`<button id="place-wager-button">Place your wager!</button>`);
+            elems.push(`<select id="place-wager-select">`);
+            for ( let i = 0; i <= self.cards.length; i++ ) {
+                elems.push(`<option value="${i}">${i}</option>`);
+            }
+            elems.push("</select>");
+            wagerHtml = elems.join("\n");
+        } else {
+            wagerHtml = (wager.Count !== null) ? wager.Count : "";
+        }
         let wonCount = (wager.HandsWon !== null) ? wager.HandsWon : "";
-        let style = (player === self.me) ? 'style="border: 1px dashed; padding: 8px; margin: 4px;"' : '';
+        let klazz = (player === self.me) ? 'wager-me' : 'wager-not-me';
         self.wagersTableBody.append(`
-            <tr ${style}>
+            <tr class="${klazz}">
                 <td>
                 ${player}
                 </td>
                 <td>
-                ${wagerCount}
+                ${wagerHtml}
                 </td>
                 <td>
                 ${wonCount}

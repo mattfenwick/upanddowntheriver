@@ -24,7 +24,7 @@
                 <div class="wrapper-horizontal">
                     <div class="wrapper-vertical">
                         <div>Who's in the game?</div>
-                        <div id="game-players"></div>
+                        <table id="game-players"></table>
                     </div>
 
                     <div id="card-per-player-container" class="wrapper-vertical">
@@ -45,14 +45,9 @@
                     <div id="round-cards"></div>
 
                     <div id="hand" class="wrapper-vertical">
-                        <div id="current-hand">Current Hand</div>
                         <div id="hand-suit" class="wrapper-horizontal"></div>
 
                         <table id="hand-cards">
-                            <thead>
-                            <th></th>
-                            <th></th>
-                            </thead>
                             <tbody></tbody>
                         </table>
 
@@ -63,20 +58,13 @@
 
                     <div id="wagers-container" class="wrapper-vertical">
                         <table id="round-wagers">
-                            <caption>Wagers</caption>
                             <thead>
-                            <th></th>
-                            <th>Wager</th>
-                            <th>Score</th>
+                                <th></th>
+                                <th>Wager</th>
+                                <th>Score</th>
                             </thead>
                             <tbody></tbody>
                         </table>
-                        <div id="round-button-container" class="wrapper-vertical">
-                            <div id="round-make-wager">
-                                <button id="round-wager-button">Place your wager!</button>
-                                <select id="round-wager-select"></select>
-                            </div>
-                        </div>
                     </div>
 
                 </div>
