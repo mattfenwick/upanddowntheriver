@@ -1,30 +1,4 @@
-#me-get-name * {
-    font-size: large;
-    padding: 4px;
-    margin: 4px;
-}
-
-#me-show-name {
-    text-align: center;
-    font-size: xx-large;
-    border-bottom: 1px dashed;
-}
-
-#game div {
-    padding: 8px;
-    margin: 4px;
-}
-
-#trump-suit {
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
-
-#hand, #wagers {/*, #round-cards { */
-    border: 1px dashed;
-    padding: 8px;
-    margin: 4px;
-}
+/* wrappers, cards */
 
 .wrapper-horizontal {
     display: flex;
@@ -34,6 +8,82 @@
 .wrapper-vertical {
     display: flex;
     flex-direction: column;
+}
+
+.suit-red {
+    color: red;
+}
+
+.suit-black {
+    color: black;
+}
+
+/* me */
+
+#me-get-name * {
+    font-size: large;
+    padding: 4px;
+    margin: 15px;
+}
+
+#me-show-name {
+    text-align: center;
+    font-size: xx-large;
+    border-bottom: 1px dashed;
+}
+
+/* game */
+
+#game {
+    font-size: large;
+}
+
+#game div {
+    padding: 8px;
+    margin: 4px;
+}
+
+#game td {
+    padding: 5px;
+}
+
+#round-start-button {
+    font-size: large;
+}
+
+/* round, hand, wagers, status */
+
+#trump-suit {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    justify-content: center;
+    font-size: 50px;
+}
+
+#trump-suit > div {
+    padding: 8px;
+    margin: 4px;
+}
+
+#current-suit {
+    font-size: xx-large;
+}
+
+#current-suit > div {
+    padding: 8px;
+    margin: 4px;
+}
+
+#round-finish-button {
+    font-size: large;
+    padding: 4px;
+    margin: 4px;
+}
+
+#wagers {
+    border: 1px dashed;
+    padding: 8px;
+    margin: 4px;
 }
 
 #current-hand {
@@ -84,45 +134,12 @@
 }
 
 #wagers button, #wagers select {
-    font-size: x-large;
-}
-
-.suit-red {
-    color: red;
-}
-
-.suit-black {
-    color: black;
-}
-
-.trump-suit {
-    font-size: 50px;
-}
-
-.hand-suit {
-    font-size: x-large;
-}
-
-#hand-suit, #trump-suit {
-    justify-content: center;
-}
-
-#hand-suit > div, #trump-suit > div {
-    padding: 8px;
-    margin: 4px;
-}
-
-.hand-leader {
-    border: 1px dashed;
-    padding: 8px;
-    margin: 4px;
-    color: red;
-    background-color: lightgreen;
+    font-size: large;
 }
 
 .statuses-me .status-name {
     color: red;
-    font-size: xx-large;
+    /*font-size: xx-large;*/
 }
 
 .statuses-wager-turn {

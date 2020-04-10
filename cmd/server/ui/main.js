@@ -218,13 +218,13 @@ Me.prototype.update = function(name) {
 
 // Game
 
-function Game(didClickRemovePlayer, didChangeCardsPerPlayer, didClickStart) {
+function Game(didClickRemovePlayer, didChangeCardsPerPlayer, didClickStartRound) {
     this.players = [];
     this.cardsPerPlayer = null;
 
     this.div = $("#game");
-    this.startButton = $("#game-round-start");
-    this.startButton.click(didClickStart);
+    this.startButton = $("#round-start-button");
+    this.startButton.click(didClickStartRound);
 
     // can't use `click` because the elements might be ever-changing
     $(document).on("click", ".game-remove-player", function() {
@@ -388,7 +388,7 @@ MyCards.prototype.setCards = function(cards) {
 
 // round
 
-function Round(didChooseWager) {
+function Round(didChooseWager, didClickFinishRound) {
     this.div = $("#round");
     this.wagersTableBody = $("#wagers tbody");
     this.trumpContainer = $("#trump-suit");
@@ -397,6 +397,9 @@ function Round(didChooseWager) {
         let wager = parseInt($("#place-wager-select").val(), 10);
         didChooseWager(wager);
     });
+
+    this.finishRoundButton = $("#round-finish-button");
+    this.finishRoundButton.click(didClickFinishRound);
 
     this.me = "";
     this.nextWagerPlayer = "";
@@ -412,7 +415,7 @@ Round.prototype.setTrumpSuit = function(trumpSuit) {
     let [color, symbol] = suitToUnicode[trumpSuit];
     let klazz = `suit-${color}`;
     for ( let i = 0; i < 5; i++ ) {
-        this.trumpContainer.append(`<div class="trump-suit ${klazz}">${symbol}</div>`);
+        this.trumpContainer.append(`<div class="${klazz}">${symbol}</div>`);
     }
 };
 
@@ -423,18 +426,21 @@ Round.prototype.setOtherStates = function() {
 Round.prototype.setWagerTurn = function(me, trumpSuit, statuses, nextWagerPlayer, cardsPerPlayer) {
     this.setTrumpSuit(trumpSuit);
     this.setPlayerStatuses(me, statuses, nextWagerPlayer, cardsPerPlayer, null, null, null);
+    this.finishRoundButton.hide();
     this.div.show();
 };
 
 Round.prototype.setPlayCardTurn = function(me, trumpSuit, statuses, leader, nextPlayer, previousHandWinner) {
     this.setTrumpSuit(trumpSuit);
     this.setPlayerStatuses(me, statuses, null, null, leader, nextPlayer, previousHandWinner);
+    this.finishRoundButton.hide();
     this.div.show();
 };
 
 Round.prototype.setRoundFinished = function(me, trumpSuit, statuses, previousHandWinner) {
     this.setTrumpSuit(trumpSuit);
     this.setPlayerStatuses(me, statuses, null, null, null, null, previousHandWinner);
+    this.finishRoundButton.show();
     this.div.show();
 };
 
@@ -515,55 +521,6 @@ Round.prototype.setPlayerStatuses = function(me, statuses, nextWagerPlayer, card
     });
 };
 
-// hand
-
-function Hand(didClickFinishRound) {
-    this.me = "";
-    this.suit = "";
-
-    // TODO get rid of hand
-    this.div = $("#hand");
-
-    // TODO move suitDiv out of Hand, make suitDiv vertical and
-    // put it in between my-cards and statusess
-    this.suitDiv = $("#hand-suit");
-
-    // TODO move finish button out of hand -- maybe to top of #round div ?
-    this.finishRoundButton = $("#round-finish-button");
-    this.finishRoundButton.click(didClickFinishRound);
-
-    this.setOtherStates();
-}
-
-Hand.prototype.setSuit = function(suit) {
-    if ( this.suit === suit ) { return; }
-    this.suit = suit;
-    this.suitDiv.empty();
-    if ( !suit ) { return; }
-    let [color, symbol] = suitToUnicode[suit];
-    let klazz = `suit-${color}`;
-    for ( let i = 0; i < 3; i++ ) {
-        this.suitDiv.append(`<div class="hand-suit ${klazz}">${symbol}</div>`);
-    }
-};
-
-Hand.prototype.setOtherStates = function() {
-    this.div.hide();
-};
-
-Hand.prototype.setPlayCardTurn = function(suit) {
-    this.setSuit(suit);
-    this.div.show();
-    this.suitDiv.show();
-    this.finishRoundButton.hide();
-};
-
-Hand.prototype.setRoundFinished = function() {
-    this.div.show();
-    this.suitDiv.hide();
-    this.finishRoundButton.show();
-};
-
 // model
 
 function Model() {
@@ -580,25 +537,26 @@ function Model() {
     function didChangeCardsPerPlayer(cardsPerPlayer) {
         self.changeCardsPerPlayer(cardsPerPlayer);
     }
-    function didClickStart() {
+    function didClickStartRound() {
         self.startRound();
     }
-    this.game = new Game(didClickRemovePlayer, didChangeCardsPerPlayer, didClickStart);
+    this.game = new Game(didClickRemovePlayer, didChangeCardsPerPlayer, didClickStartRound, );
 
     function didChooseWager(wager) {
         self.makeWager(wager);
     }
-    this.round = new Round(didChooseWager);
+    function didClickFinishRound() {
+        self.finishRound();
+    }
+    this.round = new Round(didChooseWager, didClickFinishRound);
 
     function didClickPlayCard(card) {
         self.playCard(card);
     }
     this.myCards = new MyCards(didClickPlayCard);
 
-    function didClickFinishRound() {
-        self.finishRound();
-    }
-    this.hand = new Hand(didClickFinishRound);
+    this.suit = null;
+    this.suitDiv = $("#current-suit");
 
     this.pollServer();
 }
@@ -616,7 +574,6 @@ Model.prototype.updateFromServer = function(ok, data) {
     this.myCards.me = me;
     this.game.me = me;
     this.round.me = me;
-    this.hand.me = me;
 
     let game = data.Game;
     let status = data.Status;
@@ -624,38 +581,51 @@ Model.prototype.updateFromServer = function(ok, data) {
     switch (data.State) {
         case "NotJoined":
             this.game.setStateNotJoined(game.Players);
-            this.hand.setOtherStates();
             this.myCards.setOtherStates();
             this.round.setOtherStates();
+            this.suitDiv.hide();
             break;
         case "WaitingForPlayers":
             this.game.setStateWaitingForPlayers(game.Players, game.CardsPerPlayer);
-            this.hand.setOtherStates();
             this.myCards.setOtherStates();
             this.round.setOtherStates();
+            this.suitDiv.hide();
             break;
         case "WagerTurn":
             this.game.setOtherStates();
-            this.hand.setOtherStates();
             this.myCards.setWagerTurn(myCards);
             this.round.setWagerTurn(me, status.TrumpSuit, status.PlayerStatuses, status.NextWagerPlayer, game.CardsPerPlayer);
+            this.suitDiv.hide();
             break;
         case "PlayCardTurn":
             let ch = status.CurrentHand;
             let nextPlayer = ch.NextPlayer;
             this.game.setOtherStates();
-            this.hand.setPlayCardTurn(ch.Suit);
             this.myCards.setPlayCardTurn(myCards, nextPlayer);
             this.round.setPlayCardTurn(me, status.TrumpSuit, status.PlayerStatuses, ch.Leader, nextPlayer, status.PreviousHandWinner);
+            this.setSuit(ch.Suit);
             break;
         case "RoundFinished":
             this.game.setOtherStates();
-            this.hand.setRoundFinished();
             this.myCards.setRoundFinished();
             this.round.setRoundFinished(me, status.TrumpSuit, status.PlayerStatuses, status.PreviousHandWinner);
+            this.suitDiv.hide();
             break;
         default:
             throw new Error(`unrecognized state ${data.State}`);
+    }
+};
+
+Model.prototype.setSuit = function(suit) {
+    if ( this.suit === suit ) { return; }
+    this.suit = suit;
+    this.suitDiv.empty();
+    if ( !suit ) { return; }
+    this.suitDiv.show();
+    let [color, symbol] = suitToUnicode[suit];
+    let klazz = `suit-${color}`;
+    for ( let i = 0; i < 3; i++ ) {
+        this.suitDiv.append(`<div class="${klazz}">${symbol}</div>`);
     }
 };
 

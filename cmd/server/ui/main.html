@@ -12,7 +12,7 @@
         <div id="container" class="wrapper-vertical">
             <div id="me" class="wrapper-vertical">
                 <div id="me-get-name" class="wrapper-vertical">
-                    What's your name?
+                    <div>What's your name?</div>
                     <input id="me-input-name" placeholder="Uranus"/>
                     <button id="me-join">Join!</button>
                 </div>
@@ -23,7 +23,7 @@
             <div id="game" class="wrapper-vertical">
                 <div class="wrapper-horizontal">
                     <div class="wrapper-vertical">
-                        <div>Who's in the game?</div>
+                        <div>Who's playing:</div>
                         <table id="game-players"></table>
                     </div>
 
@@ -33,32 +33,31 @@
                     </div>
                 </div>
 
-                <button id="game-round-start">Start Round!</button>
+                <button id="round-start-button">Start Round!</button>
             </div>
 
 
             <div id="round" class="wrapper-vertical">
 
+                <button id="round-finish-button">Finish Round</button>
+
                 <div id="trump-suit" class="wrapper-horizontal"></div>
 
                 <div id="cards-hand-wagers" class="wrapper-horizontal">
-                    <div id="my-cards"></div>
-
-                    <div id="hand" class="wrapper-vertical">
-                        <div id="hand-suit" class="wrapper-horizontal"></div>
-                        <button id="round-finish-button">Finish Round</button>
-                    </div>
-
                     <table id="wagers">
                         <thead>
-                            <th></th>
-                            <th>Wager</th>
-                            <th>Score</th>
-                            <th>Previous Card</th>
-                            <th>Current Hand</th>
+                        <th></th>
+                        <th>Wager</th>
+                        <th>Score</th>
+                        <th>Previous Card</th>
+                        <th>Current Hand</th>
                         </thead>
                         <tbody></tbody>
                     </table>
+
+                    <div id="current-suit" class="wrapper-vertical"></div>
+
+                    <div id="my-cards"></div>
 
                 </div>
             </div>
