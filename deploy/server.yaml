@@ -41,8 +41,8 @@ spec:
               memory: 1Gi
               cpu: 100m
             limits:
-              memory: 2Gi
-              cpu: 1000m
+              memory: 1Gi
+              cpu: 100m
 ---
 apiVersion: v1
 kind: Service
