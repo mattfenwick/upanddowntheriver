@@ -9,7 +9,7 @@ import (
 func RunPlayerStateTests() {
 	Describe("PlayerState", func() {
 		It("should serialize to json", func() {
-			val := []PlayerState{PlayerStateHandFinished, PlayerStateHandPlayTurn}
+			val := []PlayerState{PlayerStateWagerTurn, PlayerStatePlayCardTurn}
 			bytes, err := json.Marshal(val)
 			Expect(err).Should(Succeed())
 			result := []PlayerState{}

@@ -8,23 +8,17 @@ import (
 type RoundState int
 
 const (
-	RoundStateCardsDealt     RoundState = iota
-	RoundStateHandReady      RoundState = iota
+	RoundStateWagers         RoundState = iota
 	RoundStateHandInProgress RoundState = iota
-	RoundStateHandFinished   RoundState = iota
 	RoundStateFinished       RoundState = iota
 )
 
 func (r RoundState) String() string {
 	switch r {
-	case RoundStateCardsDealt:
-		return "RoundStateCardsDealt"
-	case RoundStateHandReady:
-		return "RoundStateHandReady"
+	case RoundStateWagers:
+		return "RoundStateWagers"
 	case RoundStateHandInProgress:
 		return "RoundStateHandInProgress"
-	case RoundStateHandFinished:
-		return "RoundStateHandFinished"
 	case RoundStateFinished:
 		return "RoundStateFinished"
 	}
@@ -77,7 +71,7 @@ func NewRound(players []string, deck Deck, cardsPerPlayer int) *Round {
 		WagerSum:       0,
 		FinishedHands:  []*Hand{},
 		CurrentHand:    nil,
-		State:          RoundStateCardsDealt,
+		State:          RoundStateWagers,
 	}
 	round.deal()
 	return round
@@ -99,8 +93,8 @@ func (round *Round) deal() {
 }
 
 func (round *Round) Wager(player string, hands int) error {
-	if round.State != RoundStateCardsDealt {
-		return errors.New(fmt.Sprintf("expected state RoundStateCardsDealt for wager, found %s", round.State.String()))
+	if round.State != RoundStateWagers {
+		return errors.New(fmt.Sprintf("expected state RoundStateWagers for wager, found %s", round.State.String()))
 	}
 	if hands > round.CardsPerPlayer {
 		return errors.New(fmt.Sprintf("%d cards per player, but wager was %d", round.CardsPerPlayer, hands))
@@ -119,17 +113,14 @@ func (round *Round) Wager(player string, hands int) error {
 			// wrong -- like above, where a player has already made a wager or where a player is unrecognized
 			return errors.New(fmt.Sprintf("dealer's wager can't add up to %d (had %d already, wagered %d)", round.CardsPerPlayer, round.WagerSum, hands))
 		}
-		round.State = RoundStateHandReady
+		round.startHand()
 	}
 	round.Wagers[player] = hands
 	round.WagerSum += hands
 	return nil
 }
 
-func (round *Round) StartHand() error {
-	if round.State != RoundStateHandReady {
-		return errors.New(fmt.Sprintf("expected state RoundStateWagersMade for starting a hand, found %s", round.State.String()))
-	}
+func (round *Round) startHand() {
 	round.State = RoundStateHandInProgress
 	var players []string
 	if len(round.FinishedHands) == 0 {
@@ -150,7 +141,6 @@ func (round *Round) StartHand() error {
 		}
 	}
 	round.CurrentHand = NewHand(round.Deck, round.TrumpSuit, players)
-	return nil
 }
 
 func (round *Round) playerHasCard(player string, card *Card) bool {
@@ -196,17 +186,13 @@ func (round *Round) PlayCard(player string, card *Card) error {
 
 	// have we finished the hand?
 	if len(hand.CardsPlayed) == len(round.PlayersOrder) {
-		round.State = RoundStateHandFinished
+		round.finishHand()
 	}
 
 	return nil
 }
 
-func (round *Round) FinishHand() error {
-	if round.State != RoundStateHandFinished {
-		return errors.New(fmt.Sprintf("expected state RoundStateHandFinished, found %s", round.State.String()))
-	}
-
+func (round *Round) finishHand() {
 	round.FinishedHands = append(round.FinishedHands, round.CurrentHand)
 	round.CurrentHand = nil
 
@@ -214,7 +200,6 @@ func (round *Round) FinishHand() error {
 	if len(round.FinishedHands) == round.CardsPerPlayer {
 		round.State = RoundStateFinished
 	} else {
-		round.State = RoundStateHandReady
+		round.startHand()
 	}
-	return nil
 }

@@ -9,32 +9,23 @@ import (
 type PlayerState int
 
 const (
-	PlayerStateNotJoined             PlayerState = iota
-	PlayerStateGameWaitingForPlayers PlayerState = iota
-	//PlayerStateGameReady             PlayerState = iota
-	PlayerStateRoundWagerTurn PlayerState = iota
-	PlayerStateRoundHandReady PlayerState = iota
-	PlayerStateHandPlayTurn   PlayerState = iota
-	PlayerStateHandFinished   PlayerState = iota
-	PlayerStateRoundFinished  PlayerState = iota
+	PlayerStateNotJoined         PlayerState = iota
+	PlayerStateWaitingForPlayers PlayerState = iota
+	PlayerStateWagerTurn         PlayerState = iota
+	PlayerStatePlayCardTurn      PlayerState = iota
+	PlayerStateRoundFinished     PlayerState = iota
 )
 
 func (p PlayerState) JSONString() string {
 	switch p {
 	case PlayerStateNotJoined:
 		return "NotJoined"
-	case PlayerStateGameWaitingForPlayers:
+	case PlayerStateWaitingForPlayers:
 		return "WaitingForPlayers"
-	//case PlayerStateGameReady:
-	//	return "Ready"
-	case PlayerStateRoundWagerTurn:
-		return "RoundWagerTurn"
-	case PlayerStateRoundHandReady:
-		return "RoundHandReady"
-	case PlayerStateHandPlayTurn:
-		return "HandPlayTurn"
-	case PlayerStateHandFinished:
-		return "HandFinished"
+	case PlayerStateWagerTurn:
+		return "WagerTurn"
+	case PlayerStatePlayCardTurn:
+		return "PlayCardTurn"
 	case PlayerStateRoundFinished:
 		return "RoundFinished"
 	}
@@ -55,21 +46,15 @@ func parsePlayerState(text string) (PlayerState, error) {
 	case "NotJoined":
 		return PlayerStateNotJoined, nil
 	case "WaitingForPlayers":
-		return PlayerStateGameWaitingForPlayers, nil
-	//case PlayerStateGameReady:
-	//	return "Ready"
-	case "RoundWagerTurn":
-		return PlayerStateRoundWagerTurn, nil
-	case "RoundHandReady":
-		return PlayerStateRoundHandReady, nil
-	case "HandPlayTurn":
-		return PlayerStateHandPlayTurn, nil
-	case "HandFinished":
-		return PlayerStateHandFinished, nil
+		return PlayerStateWaitingForPlayers, nil
+	case "WagerTurn":
+		return PlayerStateWagerTurn, nil
+	case "PlayCardTurn":
+		return PlayerStatePlayCardTurn, nil
 	case "RoundFinished":
 		return PlayerStateRoundFinished, nil
 	}
-	return PlayerStateGameWaitingForPlayers, errors.New(fmt.Sprintf("unable to parse player state %s", text))
+	return PlayerStateWaitingForPlayers, errors.New(fmt.Sprintf("unable to parse player state %s", text))
 }
 
 func (p *PlayerState) UnmarshalJSON(data []byte) error {

@@ -150,16 +150,8 @@ function postWager(me, hands, cont) {
     postAction({'Me': me, 'MakeWager': {'Hands': hands}}, cont)
 }
 
-function postStartHand(me, cont) {
-    postAction({'Me': me, 'StartHand': {}}, cont);
-}
-
 function postPlayCard(me, card, cont) {
     postAction({'Me': me, 'PlayCard': card}, cont)
-}
-
-function postFinishHand(me, cont) {
-    postAction({'Me': me, 'FinishHand': {}}, cont);
 }
 
 function postFinishRound(me, cont) {
@@ -277,16 +269,10 @@ Game.prototype.setState = function(state) {
             this.startButton.show();
             this.cardsPerPlayerContainer.show();
             break;
-        case "RoundWagerTurn":
+        case "WagerTurn":
             this.div.hide();
             break;
-        case "RoundHandReady":
-            this.div.hide();
-            break;
-        case "HandPlayTurn":
-            this.div.hide();
-            break;
-        case "HandFinished":
+        case "PlayCardTurn":
             this.div.hide();
             break;
         case "RoundFinished":
@@ -407,13 +393,13 @@ MyCards.prototype.setCards = function(cards) {
 
 // round
 
-function Round(didChooseWager, didClickPlayCard, didClickStartHand, didClickFinishHand, didClickFinishRound) {
+function Round(didChooseWager, didClickPlayCard, didClickFinishRound) {
     this.div = $("#round");
     this.wagersTableBody = $("#wagers tbody");
     this.trumpContainer = $("#trump-suit");
 
     this.myCards = new MyCards(didClickPlayCard);
-    this.hand = new Hand(didClickStartHand, didClickFinishHand, didClickFinishRound);
+    this.hand = new Hand(didClickFinishRound);
 
     $(document).on("click", "#place-wager-button", function() {
         let wager = parseInt($("#place-wager-select").val(), 10);
@@ -467,10 +453,8 @@ Round.prototype.setRoundState = function(state) {
         case "WaitingForPlayers":
             this.div.hide();
             break;
-        case "RoundWagerTurn":
-        case "RoundHandReady":
-        case "HandPlayTurn":
-        case "HandFinished":
+        case "WagerTurn":
+        case "PlayCardTurn":
         case "RoundFinished":
             this.div.show();
             break;
@@ -523,7 +507,7 @@ Round.prototype.setWagers = function(wagers, nextWagerPlayer) {
 
 // hand
 
-function Hand(didClickStartHand, didClickFinishHand, didClickFinishRound) {
+function Hand(didClickFinishRound) {
     this.me = "";
     this.state = "";
     this.suit = "";
@@ -535,14 +519,10 @@ function Hand(didClickStartHand, didClickFinishHand, didClickFinishRound) {
     this.cardsPlayedTable = $("#hand-cards");
     this.cardsPlayedTableBody = $("#hand-cards tbody");
 
-    this.startHandButton = $("#hand-start-button");
-    this.finishHandButton = $("#hand-finish-button");
     this.finishRoundButton = $("#round-finish-button");
 
     this.setState("NotJoined");
 
-    this.startHandButton.click(didClickStartHand);
-    this.finishHandButton.click(didClickFinishHand);
     this.finishRoundButton.click(didClickFinishRound);
 }
 
@@ -611,37 +591,19 @@ Hand.prototype.setState = function(state) {
         case "WaitingForPlayers":
             this.div.hide();
             break;
-        case "RoundWagerTurn":
+        case "WagerTurn":
             this.div.hide();
             break;
-        case "RoundHandReady":
-            this.div.show();
-            this.startHandButton.show();
-            this.finishHandButton.hide();
-            this.finishRoundButton.hide();
-            break;
-        case "HandPlayTurn":
+        case "PlayCardTurn":
             this.div.show();
             this.suitDiv.show();
             this.cardsPlayedTable.show();
-            this.startHandButton.hide();
-            this.finishHandButton.hide();
-            this.finishRoundButton.hide();
-            break;
-        case "HandFinished":
-            this.div.show();
-            this.suitDiv.show();
-            this.cardsPlayedTable.show();
-            this.startHandButton.hide();
-            this.finishHandButton.show();
             this.finishRoundButton.hide();
             break;
         case "RoundFinished":
             this.div.show();
             this.suitDiv.hide();
             this.cardsPlayedTable.hide();
-            this.startHandButton.hide();
-            this.finishHandButton.hide();
             this.finishRoundButton.show();
             break;
         default:
@@ -676,16 +638,10 @@ function Model() {
     function didClickPlayCard(card) {
         self.playCard(card);
     }
-    function didClickStartHand() {
-        self.startHand();
-    }
-    function didClickFinishHand() {
-        self.finishHand();
-    }
     function didClickFinishRound() {
         self.finishRound();
     }
-    this.round = new Round(didChooseWager, didClickPlayCard, didClickStartHand, didClickFinishHand, didClickFinishRound);
+    this.round = new Round(didChooseWager, didClickPlayCard, didClickFinishRound);
 
     this.pollServer();
 }
@@ -732,10 +688,6 @@ Model.prototype.join = function(name) {
     }
 };
 
-Model.prototype.startHand = function() {
-    postStartHand(this.me.name, this.updateFromServer.bind(this));
-};
-
 Model.prototype.removePlayer = function(player) {
     console.log(`removing player ${player}`);
     postRemovePlayer(this.me.name, player, this.updateFromServer.bind(this));
@@ -759,11 +711,6 @@ Model.prototype.makeWager = function(hands) {
 Model.prototype.playCard = function(card) {
     console.log(`playing card ${card.Number} of ${card.Suit}`);
     postPlayCard(this.me.name, card, this.updateFromServer.bind(this));
-};
-
-Model.prototype.finishHand = function() {
-    console.log("finishing hand");
-    postFinishHand(this.me.name, this.updateFromServer.bind(this));
 };
 
 Model.prototype.finishRound = function() {

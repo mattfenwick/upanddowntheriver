@@ -125,13 +125,6 @@ func (game *Game) startRound() error {
 	return nil
 }
 
-func (game *Game) startHand() error {
-	if game.State != GameStateRoundInProgress {
-		return errors.New(fmt.Sprintf("can't start hand, in state %s", game.State.String()))
-	}
-	return game.CurrentRound.StartHand()
-}
-
 func (game *Game) finishRound() error {
 	if game.State != GameStateRoundInProgress {
 		return errors.New(fmt.Sprintf("can't finish round, in state %s", game.State.String()))
@@ -157,13 +150,6 @@ func (game *Game) playCard(player string, card *Card) error {
 	return game.CurrentRound.PlayCard(player, card)
 }
 
-func (game *Game) finishHand() error {
-	if game.State != GameStateRoundInProgress {
-		return errors.New(fmt.Sprintf("can't finish hand, game in state %s", game.State.String()))
-	}
-	return game.CurrentRound.FinishHand()
-}
-
 // getters
 
 func (game *Game) playerModel(player string) (*PlayerModel, error) {
@@ -177,7 +163,7 @@ func (game *Game) playerModel(player string) (*PlayerModel, error) {
 	if player != "" {
 		switch game.State {
 		case GameStateSetup:
-			state = PlayerStateGameWaitingForPlayers
+			state = PlayerStateWaitingForPlayers
 			break
 		case GameStateRoundInProgress:
 			state, round, hand = game.playerRoundAndHand(player)
@@ -250,18 +236,11 @@ func (game *Game) playerRoundAndHand(player string) (PlayerState, *PlayerRound, 
 	var state PlayerState
 	var hand *PlayerHand
 	switch game.CurrentRound.State {
-	case RoundStateCardsDealt:
-		state = PlayerStateRoundWagerTurn
+	case RoundStateWagers:
+		state = PlayerStateWagerTurn
 		break
-	case RoundStateHandReady:
-		state = PlayerStateRoundHandReady
-		break
-	case RoundStateHandInProgress, RoundStateHandFinished:
-		if game.CurrentRound.State == RoundStateHandInProgress {
-			state = PlayerStateHandPlayTurn
-		} else {
-			state = PlayerStateHandFinished
-		}
+	case RoundStateHandInProgress:
+		state = PlayerStatePlayCardTurn
 		ch := game.CurrentRound.CurrentHand
 		cardsPlayed := []*PlayedCard{}
 		nextPlayer := ""

@@ -29,7 +29,7 @@ func RunRoundTests() {
 		Describe("initialization", func() {
 			It("should have the right state and cards per player", func() {
 				round := NewRound(players, deck, 3)
-				Expect(round.State).To(Equal(RoundStateCardsDealt))
+				Expect(round.State).To(Equal(RoundStateWagers))
 				Expect(round.CardsPerPlayer).To(Equal(3))
 			})
 
@@ -50,7 +50,7 @@ func RunRoundTests() {
 				round := NewRound(players, deck, 5)
 
 				Expect(len(round.Players)).To(Equal(3))
-				Expect(round.State).To(Equal(RoundStateCardsDealt))
+				Expect(round.State).To(Equal(RoundStateWagers))
 
 				for _, cards := range round.Players {
 					Expect(len(cards)).To(Equal(5))
@@ -96,12 +96,12 @@ func RunRoundTests() {
 				Expect(round.Wager("alfonso", 4)).ToNot(BeNil())
 				Expect(len(round.Wagers)).To(Equal(2))
 				Expect(round.WagerSum).To(Equal(9))
-				Expect(round.State).To(Equal(RoundStateCardsDealt))
+				Expect(round.State).To(Equal(RoundStateWagers))
 
 				Expect(round.Wager("alfonso", 2)).Should(Succeed())
 				Expect(len(round.Wagers)).To(Equal(3))
 				Expect(round.WagerSum).To(Equal(11))
-				Expect(round.State).To(Equal(RoundStateHandReady))
+				Expect(round.State).To(Equal(RoundStateHandInProgress))
 			})
 
 			It("Doesn't allow wagers higher than the number of cards per player", func() {
@@ -110,12 +110,12 @@ func RunRoundTests() {
 				Expect(round.Wager("player1", 4)).ToNot(BeNil())
 				Expect(len(round.Wagers)).To(Equal(0))
 				Expect(round.WagerSum).To(Equal(0))
-				Expect(round.State).To(Equal(RoundStateCardsDealt))
+				Expect(round.State).To(Equal(RoundStateWagers))
 
 				Expect(round.Wager("player1", 2)).Should(Succeed())
 				Expect(len(round.Wagers)).To(Equal(1))
 				Expect(round.WagerSum).To(Equal(2))
-				Expect(round.State).To(Equal(RoundStateCardsDealt))
+				Expect(round.State).To(Equal(RoundStateWagers))
 			})
 
 			It("Finishes wagers after all players have wagered in turn", func() {
@@ -127,7 +127,7 @@ func RunRoundTests() {
 
 				Expect(len(round.Wagers)).To(Equal(3))
 				Expect(round.WagerSum).To(Equal(6))
-				Expect(round.State).To(Equal(RoundStateHandReady))
+				Expect(round.State).To(Equal(RoundStateHandInProgress))
 			})
 		})
 
@@ -138,8 +138,6 @@ func RunRoundTests() {
 			round.Wager("jimbo", 2)
 			round.Wager("alfonso", 3)
 
-			Expect(round.StartHand()).Should(Succeed())
-
 			return round
 		}
 
@@ -149,8 +147,6 @@ func RunRoundTests() {
 			round.Wager("player1", 2)
 			round.Wager("jimbo", 1)
 			round.Wager("alfonso", 0)
-
-			Expect(round.StartHand()).Should(Succeed())
 
 			return round
 		}
@@ -178,14 +174,10 @@ func RunRoundTests() {
 				Expect(round.PlayCard("jimbo", threeOfClubs)).Should(Succeed())
 				Expect(round.PlayCard("alfonso", fourOfClubs)).Should(Succeed())
 
-				Expect(round.State).To(Equal(RoundStateHandFinished))
-				Expect(round.FinishHand()).To(Succeed())
-
-				Expect(round.State).To(Equal(RoundStateHandReady))
+				Expect(round.State).To(Equal(RoundStateHandInProgress))
 				Expect(len(round.FinishedHands)).To(Equal(1))
-				Expect(round.CurrentHand).To(BeNil())
+				Expect(round.CurrentHand).ToNot(BeNil())
 
-				Expect(round.StartHand()).Should(Succeed())
 				Expect(round.PlayCard("player1", fiveOfClubs)).ToNot(BeNil())
 				Expect(round.PlayCard("player1", twoOfClubs)).Should(Succeed())
 				Expect(round.State).To(Equal(RoundStateHandInProgress))
@@ -219,14 +211,9 @@ func RunRoundTests() {
 				Expect(round.PlayCard("jimbo", threeOfClubs)).Should(Succeed())
 				Expect(round.PlayCard("alfonso", fourOfClubs)).Should(Succeed())
 
-				Expect(round.State).To(Equal(RoundStateHandFinished))
-				Expect(round.FinishHand()).To(Succeed())
-
-				Expect(round.State).To(Equal(RoundStateHandReady))
+				Expect(round.State).To(Equal(RoundStateHandInProgress))
 				Expect(len(round.FinishedHands)).To(Equal(1))
-				Expect(round.CurrentHand).To(BeNil())
-
-				Expect(round.StartHand()).To(Succeed())
+				Expect(round.CurrentHand).ToNot(BeNil())
 
 				hand := round.CurrentHand
 				Expect(hand.PlayersOrder).To(Equal([]string{"alfonso", "player1", "jimbo"}))
@@ -234,9 +221,6 @@ func RunRoundTests() {
 				Expect(round.PlayCard("alfonso", threeOfDiamonds)).Should(Succeed())
 				Expect(round.PlayCard("player1", fourOfDiamonds)).Should(Succeed())
 				Expect(round.PlayCard("jimbo", fiveOfDiamonds)).Should(Succeed())
-
-				Expect(round.FinishHand()).To(Succeed())
-				Expect(round.StartHand()).To(Succeed())
 
 				hand3 := round.CurrentHand
 				Expect(hand3.PlayersOrder).To(Equal([]string{"jimbo", "alfonso", "player1"}))
@@ -266,19 +250,12 @@ func RunRoundTests() {
 				Expect(round.PlayCard("jimbo", threeOfClubs)).Should(Succeed())
 				Expect(round.PlayCard("alfonso", fourOfClubs)).Should(Succeed())
 
-				Expect(round.State).To(Equal(RoundStateHandFinished))
-
-				Expect(round.FinishHand()).Should(Succeed())
-				Expect(round.StartHand()).Should(Succeed())
-
 				Expect(round.State).To(Equal(RoundStateHandInProgress))
 
 				Expect(round.PlayCard("alfonso", sevenOfClubs)).Should(Succeed())
 				Expect(round.PlayCard("player1", fiveOfClubs)).Should(Succeed())
 				Expect(round.PlayCard("jimbo", sixOfClubs)).Should(Succeed())
 
-				Expect(round.State).To(Equal(RoundStateHandFinished))
-				Expect(round.FinishHand()).To(Succeed())
 				Expect(round.State).To(Equal(RoundStateFinished))
 			})
 		})

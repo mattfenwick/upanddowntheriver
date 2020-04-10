@@ -105,30 +105,6 @@ func (gcw *GameConcurrencyWrapper) StartRound() error {
 	return <-done
 }
 
-func (gcw *GameConcurrencyWrapper) StartHand() error {
-	done := make(chan error)
-	gcw.Actions <- &Action{"startHand", func() error {
-		err := gcw.Game.startHand()
-		go func() {
-			done <- err
-		}()
-		return err
-	}}
-	return <-done
-}
-
-func (gcw *GameConcurrencyWrapper) FinishHand() error {
-	done := make(chan error)
-	gcw.Actions <- &Action{"finishHand", func() error {
-		err := gcw.Game.finishHand()
-		go func() {
-			done <- err
-		}()
-		return err
-	}}
-	return <-done
-}
-
 func (gcw *GameConcurrencyWrapper) FinishRound() error {
 	done := make(chan error)
 	gcw.Actions <- &Action{"finishRound", func() error {
@@ -194,63 +170,3 @@ func (gcw *GameConcurrencyWrapper) GetPlayerModel(player string) (*PlayerModel, 
 	<-done
 	return pm, err
 }
-
-//type GameModel struct {
-//	Players []string
-//}
-//
-//func (gcw *GameConcurrencyWrapper) GetGameModel() *GameModel {
-//	done := make(chan *GameModel)
-//	gcw.Actions <- &Action{
-//		Name: "getGameModel",
-//		Apply: func() error {
-//			players := []string{}
-//			for player := range game.Players {
-//				players = append(players, player)
-//			}
-//			done <- &GameModel{Players: players}
-//			return nil
-//		},
-//	}
-//	return <-done
-//}
-//
-//type RoundModel struct {
-//	// PlayerOrder implies Dealer -- last player
-//	PlayerOrder []string
-//	TrumpSuit   string
-//	Wagers      map[string]int
-//	Hands       []*HandModel
-//	CurrentHand *HandModel
-//}
-//
-//func (gcw *GameConcurrencyWrapper) GetRoundModel() {
-//	// TODO player order, dealer, trump suit, hands, wagers
-//}
-//
-//type HandModel struct {
-//	Suit        string
-//	CardsPlayed map[string]*Card
-//	Leader      string
-//	LeaderCard  *Card
-//	NextPlayer  string
-//	Hand
-//}
-//
-//func (gcw *GameConcurrencyWrapper) GetHandModel() {
-//	// TODO suit, cards played, leader, leader card
-//}
-//
-//type HandResults struct {
-//	CardsPlayed map[string]*Card
-//	Winners     []string
-//	Losers      []string
-//}
-//
-//func (gcw *GameConcurrencyWrapper) GetHandResults() {
-//	// TODO winner, cards played
-//}
-//
-//func (gcw *GameConcurrencyWrapper) GetRoundResults() {
-//	// TODO wagers, winners, losers
-//}
