@@ -100,13 +100,18 @@ type PlayerStatus struct {
 	CurrentCard  *Card
 }
 
+type PreviousHand struct {
+	Suit   string
+	Winner string
+}
+
 type Status struct {
-	PlayerStatuses     []*PlayerStatus
-	TrumpSuit          string
-	NextWagerPlayer    string
-	WagerSum           int
-	PreviousHandWinner string
-	CurrentHand        *CurrentHand
+	PlayerStatuses  []*PlayerStatus
+	TrumpSuit       string
+	NextWagerPlayer string
+	WagerSum        int
+	PreviousHand    *PreviousHand
+	CurrentHand     *CurrentHand
 }
 
 type PlayerModel struct {

@@ -65,15 +65,6 @@
     margin: 4px;
 }
 
-#current-suit {
-    font-size: xx-large;
-}
-
-#current-suit > div {
-    padding: 8px;
-    margin: 4px;
-}
-
 #round-finish-button {
     font-size: large;
     padding: 4px;
@@ -84,10 +75,6 @@
     border: 1px dashed;
     padding: 8px;
     margin: 4px;
-}
-
-#current-hand {
-    text-align: center;
 }
 
 #cards-hand-wagers {
@@ -125,6 +112,15 @@
 
 #wagers button, #wagers select {
     font-size: large;
+}
+
+.status-suit {
+    font-size: xx-large;
+}
+
+.status-suit > div {
+    padding: 8px;
+    margin: 4px;
 }
 
 .statuses-me .status-name {

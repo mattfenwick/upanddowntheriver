@@ -239,7 +239,10 @@ func (game *Game) playerStatusAndCards(player string) (PlayerState, *Status, []*
 		WagerSum:       game.CurrentRound.WagerSum,
 	}
 	if prevHand != nil {
-		status.PreviousHandWinner = prevHand.Leader
+		status.PreviousHand = &PreviousHand{
+			Suit:   prevHand.Suit,
+			Winner: prevHand.Leader,
+		}
 	}
 	for _, player := range game.CurrentRound.PlayersOrder {
 		if _, ok := game.CurrentRound.Wagers[player]; !ok {
