@@ -24,6 +24,25 @@ go run server.go conf.json
 [Visit the UI](http://localhost:5932/main.html)
 
 
+## Build and push an image
+
+```
+make server
+
+docker push <whatever-tag-was-built>
+```
+
+
+## Hacking on the server
+
+```
+make fmt
+
+make vet
+
+make test
+```
+
 
 ## How to deploy to kubernetes
 
@@ -46,3 +65,8 @@ Figure out how to expose the `up-and-down-the-river` service!
 Server: [golang](./cmd/server/server.go)
 
 UI: [javascript](./cmd/server/ui)
+
+
+# TODOs
+
+A modern, idiomatic UI that isn't ugly :)
