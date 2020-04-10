@@ -85,38 +85,34 @@ type PlayerGame struct {
 	CardsPerPlayer int
 }
 
-type PlayedCard struct {
-	Player string
-	Card   *Card
+type CurrentHand struct {
+	Suit       string
+	Leader     string
+	LeaderCard *Card
+	NextPlayer string
 }
 
-type PlayerHand struct {
-	Cards       []*Card
-	Suit        string
-	Leader      string
-	LeaderCard  *Card
-	CardsPlayed []*PlayedCard
-	NextPlayer  string
+type PlayerStatus struct {
+	Player       string
+	Wager        *int
+	HandsWon     *int
+	PreviousCard *Card
+	CurrentCard  *Card
 }
 
-type PlayerWager struct {
-	Player   string
-	Count    *int
-	HandsWon *int
-}
-
-type PlayerRound struct {
-	Cards           []*Card
-	Wagers          []*PlayerWager
-	TrumpSuit       string
-	NextWagerPlayer string
-	WagerSum        int
+type Status struct {
+	PlayerStatuses     []*PlayerStatus
+	TrumpSuit          string
+	NextWagerPlayer    string
+	WagerSum           int
+	PreviousHandWinner string
+	CurrentHand        *CurrentHand
 }
 
 type PlayerModel struct {
-	Me    string
-	State PlayerState
-	Game  *PlayerGame
-	Round *PlayerRound
-	Hand  *PlayerHand
+	Me      string
+	State   PlayerState
+	Game    *PlayerGame
+	Status  *Status
+	MyCards []*Card
 }

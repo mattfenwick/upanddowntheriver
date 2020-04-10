@@ -120,7 +120,23 @@
     background-color: lightgreen;
 }
 
-/* TODO why is this here? */
-.hand-not-leader {
+.statuses-me .status-name {
+    color: red;
+    font-size: xx-large;
+}
 
+.statuses-wager-turn {
+    background-color: lightgray;
+}
+
+.statuses-play-card-turn {
+    background-color: lightgray;
+}
+
+.statuses-leader .status-current-card {
+    background-color: greenyellow;
+}
+
+.statuses-previous-hand-winner .status-previous-card {
+    background-color: green;
 }

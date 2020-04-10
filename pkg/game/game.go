@@ -158,15 +158,15 @@ func (game *Game) playerModel(player string) (*PlayerModel, error) {
 	}
 
 	var state PlayerState
-	var round *PlayerRound
-	var hand *PlayerHand
+	var status *Status
+	var myCards []*Card
 	if player != "" {
 		switch game.State {
 		case GameStateSetup:
 			state = PlayerStateWaitingForPlayers
 			break
 		case GameStateRoundInProgress:
-			state, round, hand = game.playerRoundAndHand(player)
+			state, status, myCards = game.playerStatusAndCards(player)
 		}
 	} else {
 		state = PlayerStateNotJoined
@@ -178,13 +178,13 @@ func (game *Game) playerModel(player string) (*PlayerModel, error) {
 			Players:        game.Players,
 			CardsPerPlayer: game.CardsPerPlayer,
 		},
-		Round: round,
-		Hand:  hand,
+		Status:  status,
+		MyCards: myCards,
 	}
 	return model, nil
 }
 
-func (game *Game) playerRoundAndHand(player string) (PlayerState, *PlayerRound, *PlayerHand) {
+func (game *Game) playerStatusAndCards(player string) (PlayerState, *Status, []*Card) {
 	cards := []*Card{}
 	for _, pc := range game.CurrentRound.Players[player] {
 		if !pc.IsPlayed {
@@ -202,7 +202,12 @@ func (game *Game) playerRoundAndHand(player string) (PlayerState, *PlayerRound, 
 		}
 		playerWins[hand.Leader]++
 	}
-	wagers := []*PlayerWager{}
+	playerStatuses := []*PlayerStatus{}
+	var prevHand *Hand
+	if len(game.CurrentRound.FinishedHands) > 0 {
+		prevHand = game.CurrentRound.FinishedHands[len(game.CurrentRound.FinishedHands)-1]
+	}
+	currHand := game.CurrentRound.CurrentHand
 	for _, p := range game.CurrentRound.PlayersOrder {
 		var wager *int
 		count, ok := game.CurrentRound.Wagers[p]
@@ -213,28 +218,37 @@ func (game *Game) playerRoundAndHand(player string) (PlayerState, *PlayerRound, 
 		if won, ok := playerWins[p]; ok {
 			handsWon = &won
 		}
-		wagers = append(wagers, &PlayerWager{
-			Player:   p,
-			Count:    wager,
-			HandsWon: handsWon,
-		})
+		ps := &PlayerStatus{
+			Player:       p,
+			Wager:        wager,
+			HandsWon:     handsWon,
+			PreviousCard: nil,
+			CurrentCard:  nil,
+		}
+		if prevHand != nil {
+			ps.PreviousCard = prevHand.CardsPlayed[p]
+		}
+		if currHand != nil {
+			ps.CurrentCard = currHand.CardsPlayed[p]
+		}
+		playerStatuses = append(playerStatuses, ps)
 	}
-	round := &PlayerRound{
-		Cards:           cards,
-		Wagers:          wagers,
-		TrumpSuit:       game.CurrentRound.TrumpSuit,
-		NextWagerPlayer: "",
-		WagerSum:        game.CurrentRound.WagerSum,
+	status := &Status{
+		PlayerStatuses: playerStatuses,
+		TrumpSuit:      game.CurrentRound.TrumpSuit,
+		WagerSum:       game.CurrentRound.WagerSum,
+	}
+	if prevHand != nil {
+		status.PreviousHandWinner = prevHand.Leader
 	}
 	for _, player := range game.CurrentRound.PlayersOrder {
 		if _, ok := game.CurrentRound.Wagers[player]; !ok {
-			round.NextWagerPlayer = player
+			status.NextWagerPlayer = player
 			break
 		}
 	}
 
 	var state PlayerState
-	var hand *PlayerHand
 	switch game.CurrentRound.State {
 	case RoundStateWagers:
 		state = PlayerStateWagerTurn
@@ -242,25 +256,19 @@ func (game *Game) playerRoundAndHand(player string) (PlayerState, *PlayerRound, 
 	case RoundStateHandInProgress:
 		state = PlayerStatePlayCardTurn
 		ch := game.CurrentRound.CurrentHand
-		cardsPlayed := []*PlayedCard{}
 		nextPlayer := ""
 		for _, p := range ch.PlayersOrder {
-			pc := &PlayedCard{Player: p, Card: nil}
-			card, ok := ch.CardsPlayed[p]
-			if ok {
-				pc.Card = card
-			} else if !ok && nextPlayer == "" {
+			_, ok := ch.CardsPlayed[p]
+			if !ok && nextPlayer == "" {
 				nextPlayer = p
+				break
 			}
-			cardsPlayed = append(cardsPlayed, pc)
 		}
-		hand = &PlayerHand{
-			Cards:       cards,
-			Suit:        ch.Suit,
-			Leader:      ch.Leader,
-			LeaderCard:  ch.LeaderCard,
-			CardsPlayed: cardsPlayed,
-			NextPlayer:  nextPlayer,
+		status.CurrentHand = &CurrentHand{
+			Suit:       ch.Suit,
+			Leader:     ch.Leader,
+			LeaderCard: ch.LeaderCard,
+			NextPlayer: nextPlayer,
 		}
 		break
 	case RoundStateFinished:
@@ -268,5 +276,5 @@ func (game *Game) playerRoundAndHand(player string) (PlayerState, *PlayerRound, 
 		break
 	}
 
-	return state, round, hand
+	return state, status, cards
 }
