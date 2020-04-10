@@ -74,20 +74,20 @@ let suitToUnicode = {
     'Spades': ['black', '\u2660'],
 };
 
-const useUnicodeCard = true;
+const useCardPicture = true;
 
 function Card(suit, number) {
-    if ( useUnicodeCard ) {
+    if ( useCardPicture ) {
         let symbol = unicodeCards[suit][number];
         let [color, _] = suitToUnicode[suit];
         let klazz = `suit-${color}`;
-        return `<div class="round-card round-card-unicode-style ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
+        return `<div class="card card-picture ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
         <div>${symbol}</div>
     </div>`;
     } else {
         let [color, symbol] = suitToUnicode[suit];
         let klazz = `suit-${color}`;
-        return `<div class="round-card round-card-style wrapper-vertical ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
+        return `<div class="card card-text wrapper-vertical ${klazz}" uadtr-card-suit="${suit}" uadtr-card-number="${number}">
         <div>${number}</div>
         <div>${symbol}</div>
     </div>`;
@@ -316,7 +316,7 @@ Game.prototype.setCardsPerPlayer = function(cardsPerPlayer) {
 function MyCards(didClickPlayCard) {
     this.cardsTable = $("#my-cards");
 
-    $(document).on("click", "#my-cards .round-card", function() {
+    $(document).on("click", "#my-cards .card", function() {
         let suit = $(this).attr('uadtr-card-suit');
         let number = $(this).attr('uadtr-card-number');
         let card = {'Suit': suit, 'Number': number};
@@ -351,12 +351,12 @@ MyCards.prototype.setNextHandPlayer = function(nextHandPlayer) {
     this.nextHandPlayer = nextHandPlayer;
     if ( nextHandPlayer === this.me ) {
         console.log("enable hand clicks");
-        $('#my-cards .round-card').css('pointer-events', 'auto');
-        this.cardsTable.addClass("round-my-turn");
+        $('#my-cards .card').css('pointer-events', 'auto');
+        this.cardsTable.addClass("my-cards-my-turn");
     } else {
         console.log("disabling hand clicks");
-        $('#my-cards .round-card').css('pointer-events', 'none');
-        this.cardsTable.removeClass("round-my-turn");
+        $('#my-cards .card').css('pointer-events', 'none');
+        this.cardsTable.removeClass("my-cards-my-turn");
     }
 };
 

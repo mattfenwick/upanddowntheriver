@@ -276,5 +276,14 @@ func (game *Game) playerStatusAndCards(player string) (PlayerState, *Status, []*
 		break
 	}
 
+	if game.CurrentRound.State == RoundStateHandInProgress || game.CurrentRound.State == RoundStateFinished {
+		zero := 0
+		for _, s := range status.PlayerStatuses {
+			if s.HandsWon == nil {
+				s.HandsWon = &zero
+			}
+		}
+	}
+
 	return state, status, cards
 }

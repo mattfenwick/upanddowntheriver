@@ -93,18 +93,9 @@
 #cards-hand-wagers {
     display: flex;
     justify-content: space-between;
-    /*flex: 1;*/
 }
 
-/*
-.wrapper-vertical, .wrapper-horizontal {
-    border: 1px dashed;
-    padding: 8px;
-    margin: 4px;
-}
-*/
-
-.round-card-style {
+.card-text {
     display: flex;
     flex-direction: column;
     font-size: xx-large;
@@ -115,12 +106,12 @@
     min-width: 40px;
 }
 
-.round-card-unicode-style > div {
+.card-picture > div {
     font-size: 100px;
 }
 
-.round-my-turn {
-    border: 2px dashed red;
+.my-cards-my-turn {
+    /*border: 2px dashed red;*/
 }
 
 #wagers {
@@ -128,7 +119,6 @@
 }
 
 #wagers th, #wagers td {
-    /* TODO this doesn't seem to do anything? margin: 8px; */
     padding: 10px;
     text-align: center;
 }
@@ -139,7 +129,6 @@
 
 .statuses-me .status-name {
     color: red;
-    /*font-size: xx-large;*/
 }
 
 .statuses-wager-turn {
@@ -151,9 +140,9 @@
 }
 
 .statuses-leader .status-current-card {
-    background-color: greenyellow;
+    border: 3px dashed;
 }
 
 .statuses-previous-hand-winner .status-previous-card {
-    background-color: green;
+    border: 3px dashed;
 }
