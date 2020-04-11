@@ -500,11 +500,13 @@ Round.prototype.setPlayerStatuses = function(me, statuses, nextWagerPlayer, card
     let model = buildStatusTableModel(me, statuses, nextWagerPlayer, cardsPerPlayer, leader, nextPlayer, previousHandWinner);
     this.wagersTableBody.empty();
     this.wagersTableBody.append(`
-        <td></td>
-        <td></td>
-        <td></td>
-        <td>${statusSuit(previousSuit)}</td>
-        <td>${statusSuit(currentSuit)}</td>
+        <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td>${statusSuit(previousSuit)}</td>
+            <td>${statusSuit(currentSuit)}</td>
+        </tr>
     `);
     let self = this;
     model.forEach(function(status) {

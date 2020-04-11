@@ -18,6 +18,21 @@
     color: black;
 }
 
+.card-text {
+    display: flex;
+    flex-direction: column;
+    font-size: xx-large;
+    border: 1px dashed;
+    padding: 8px;
+    margin: 4px;
+    text-align: center;
+    min-width: 40px;
+}
+
+.card-picture > div {
+    font-size: 100px;
+}
+
 /* me */
 
 #me-get-name * {
@@ -82,21 +97,6 @@
     justify-content: space-between;
 }
 
-.card-text {
-    display: flex;
-    flex-direction: column;
-    font-size: xx-large;
-    border: 1px dashed;
-    padding: 8px;
-    margin: 4px;
-    text-align: center;
-    min-width: 40px;
-}
-
-.card-picture > div {
-    font-size: 100px;
-}
-
 .my-cards-my-turn {
     /*border: 2px dashed red;*/
 }
@@ -106,7 +106,7 @@
 }
 
 #wagers th, #wagers td {
-    padding: 10px;
+    padding: 5px;
     text-align: center;
 }
 
@@ -115,12 +115,13 @@
 }
 
 .status-suit {
+    justify-content: center;
     font-size: xx-large;
 }
 
 .status-suit > div {
-    padding: 8px;
-    margin: 4px;
+    padding: 2px;
+    margin: 2px;
 }
 
 .statuses-me .status-name {
