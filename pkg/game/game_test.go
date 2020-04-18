@@ -161,6 +161,30 @@ func RunGameTests() {
 
 				Expect(game.Players).To(Equal([]string{"def", "ghi", "abc"}))
 			})
+
+			It("should calculate player moods according to their chances of winning or how bad they lost", func() {
+				game := NewGame()
+				game.Deck = NewDeterministicShuffleDeck()
+				Expect(game.join("abc")).Should(Succeed())
+				Expect(game.join("def")).Should(Succeed())
+				Expect(game.join("ghi")).Should(Succeed())
+				Expect(game.setCardsPerPlayer(4)).Should(Succeed())
+
+				Expect(game.startRound()).Should(Succeed())
+
+				Expect(game.makeWager("abc", 4)).Should(Succeed())
+				Expect(game.makeWager("def", 2)).Should(Succeed())
+				Expect(game.makeWager("ghi", 0)).Should(Succeed())
+
+				// TODO this is a wonky
+				pm1 := game.playerModel("abc").Status.PlayerStatuses
+				Expect(pm1[0].Mood).To(Equal(PlayerMoodBarelyWinnable))
+				Expect(pm1[1].Mood).To(Equal(PlayerMoodWinnable))
+				Expect(pm1[2].Mood).To(Equal(PlayerMoodBarelyWinnable))
+
+				// TODO need a deterministic shuffle deck
+				//Expect
+			})
 		})
 	})
 }

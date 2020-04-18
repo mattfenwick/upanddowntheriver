@@ -14,5 +14,6 @@ func TestModel(t *testing.T) {
 	RunDeckTests()
 	RunHandTests()
 	RunPlayerStateTests()
+	RunPlayerModelTests()
 	RunSpecs(t, "game suite")
 }

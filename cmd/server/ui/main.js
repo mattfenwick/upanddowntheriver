@@ -475,6 +475,24 @@ Status.prototype.setRoundFinished = function(statuses) {
     this.cont.show();
 };
 
+const moodCharacters = {
+    "None": "",
+    "Lost": "\u2639",
+    "LostBadly": "\uD83D\uDE22",
+    "LostReallyBadly": "\uD83E\uDD2E",
+    "Scared": "\uD83D\uDE1F",
+    "Winnable": "\uD83D\uDE0F",
+    "BarelyWinnable": "\uD83D\uDE10",
+    "Won": "\uD83E\uDD73"
+};
+
+function moodToUnicode(mood) {
+    if ( mood in moodCharacters ) {
+        return moodCharacters[mood];
+    }
+    throw new Error(`unrecognized mood ${mood}`);
+}
+
 function buildStatusTableModel(statuses, cardsPerPlayer) {
     let rows = [];
     statuses.forEach(function(status) {
@@ -498,6 +516,7 @@ function buildStatusTableModel(statuses, cardsPerPlayer) {
                 'statuses-previous-hand-winner': status.IsPreviousWinner,
             },
             'name': status.Player,
+            'mood': moodToUnicode(status.Mood),
             'wager': wager,
             'handsWon': status.HandsWon,
             'prevCard': pc ? [pc.Suit, pc.Number] : null,
@@ -538,6 +557,7 @@ Status.prototype.setPlayerStatuses = function(status, cardsPerPlayer) {
             <td></td>
             <td></td>
             <td></td>
+            <td></td>
             <td>${statusSuit(ph ? ph.Suit : null)}</td>
             <td>${statusSuit(ch ? ch.Suit : null)}</td>
         </tr>
@@ -559,6 +579,7 @@ Status.prototype.setPlayerStatuses = function(status, cardsPerPlayer) {
         }
         let tds = `
             <td class="status-name">${status.name}</td>
+            <td class="status-mood">${status.mood}</td>
             <td class="status-wager">${wager}</td>
             <td class="status-hands-won">${(status.handsWon !== null) ? status.handsWon : ""}</td>
             <td class="status-previous-card">${(status.prevCard !== null) ? Card(status.prevCard[0], status.prevCard[1]) : ""}</td>

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"sort"
 )
 
@@ -100,6 +101,7 @@ type PlayerStatus struct {
 	IsNextPlayer     bool
 	IsCurrentLeader  bool
 	IsPreviousWinner bool
+	Mood             PlayerMood
 	Wager            *int
 	HandsWon         *int
 	PreviousCard     *Card
@@ -210,8 +212,7 @@ func playerStatusAndCards(game *Game, player string) (PlayerState, *Status, []*C
 			IsNextWagerer: p == nextWagerPlayer,
 			Wager:         wager,
 			HandsWon:      handsWon,
-			PreviousCard:  nil,
-			CurrentCard:   nil,
+			Mood:          PlayerMoodNone,
 		}
 		if prevHand != nil {
 			ps.PreviousCard = prevHand.CardsPlayed[p]
@@ -275,8 +276,189 @@ func playerStatusAndCards(game *Game, player string) (PlayerState, *Status, []*C
 			if s.HandsWon == nil {
 				s.HandsWon = &zero
 			}
+			// figure out the mood
+			handsFinished := len(game.CurrentRound.FinishedHands)
+			totalHands := game.CurrentRound.CardsPerPlayer
+			isWinningCurrentHand := (game.CurrentRound.CurrentHand != nil) && (game.CurrentRound.CurrentHand.Leader == s.Player)
+			hasPlayedForCurrentHand := s.CurrentCard != nil
+			mood := playerMood(*s.Wager, *s.HandsWon, handsFinished, totalHands, hasPlayedForCurrentHand, isWinningCurrentHand)
+			log.Infof("player %s mood for wager %d, hands won %d, hands finished %d, total hands %d, has played %t, is winning current hand %t: %s", s.Player, *s.Wager, *s.HandsWon, handsFinished, totalHands, hasPlayedForCurrentHand, isWinningCurrentHand, mood.JSONString())
+			s.Mood = mood
 		}
 	}
 
 	return state, status, cards
+}
+
+func lostMood(miss int) PlayerMood {
+	if miss > 3 || miss < -3 {
+		return PlayerMoodLostReallyBadly
+	} else if miss > 1 || miss < -1 {
+		return PlayerMoodLostBadly
+	} else if miss > 0 || miss < 0 {
+		return PlayerMoodLost
+	}
+	panic("can't handle 0s")
+}
+
+func playerMood(wager int, handsWon int, handsFinished int, totalHands int, hasPlayedForCurrentHand bool, isWinningCurrentHand bool) PlayerMood {
+	diff := wager - handsWon
+	// game over?
+	if handsFinished == totalHands {
+		if diff == 0 {
+			return PlayerMoodWon
+		}
+		return lostMood(diff)
+	}
+
+	handsRemaining := totalHands - handsFinished - 1
+	maxWins := handsWon + handsRemaining
+	if !hasPlayedForCurrentHand || (hasPlayedForCurrentHand && isWinningCurrentHand) {
+		maxWins++
+	}
+	minWins := handsWon
+	log.Infof("max, min wins: %d, %d", maxWins, minWins)
+	if minWins == wager && isWinningCurrentHand {
+		return PlayerMoodScared
+	}
+	if maxWins == wager || minWins == wager {
+		return PlayerMoodBarelyWinnable
+	}
+	if maxWins >= wager && minWins <= wager {
+		return PlayerMoodWinnable
+	}
+	if maxWins < wager {
+		return lostMood(maxWins - wager)
+	}
+	if minWins > wager {
+		return lostMood(minWins - wager)
+	}
+	panic("not sure how this happened")
+}
+
+func playerMood2(wager int, handsWon int, handsRemaining int, hasPlayedForCurrentHand bool, isWinningCurrentHand bool) PlayerMood {
+	diff := wager - handsWon
+	max := handsWon + handsRemaining
+	// game over?
+	if handsRemaining == 0 {
+		if diff == 0 {
+			return PlayerMoodWon
+		}
+		return lostMood(diff)
+	}
+
+	// lost by going too high
+	if handsWon > wager {
+		return lostMood(diff)
+	}
+
+	// barely winnable: every remaining trick must go a specific way
+	//  - eg: wager 0, won 0, 5 hands remaining
+	//  - eg: wager 3, won 0, 3 hands remaining
+	//  - eg: wager 3, won 3, 3 hands remaining
+	if diff == handsRemaining || diff == 0 {
+		return PlayerMoodBarelyWinnable
+	}
+
+	// winnable: there's some slack, not every single trick has to go a certain way
+	//  - eg: wager 2, won 0, 4 hands remaining
+	//  - eg: wager 2, won 1, 2 hands remaining
+	if diff < handsRemaining && diff > 0 {
+		return PlayerMoodWinnable
+	}
+
+	// lost by going too low
+	//  - eg: wager 4, won 2, 1 hand  remaining => max of 3, miss by 1 => lost
+	//  - eg: wager 6, won 2, 2 hands remaining => max of 4, miss by 2 => lost badly
+	//  - eg: wager 6, won 0, 2 hands remaining => max of 2, miss by 4 => lost really badly
+	return lostMood(wager - max)
+}
+
+type PlayerMood int
+
+const (
+	PlayerMoodNone            PlayerMood = iota
+	PlayerMoodLost            PlayerMood = iota
+	PlayerMoodLostBadly       PlayerMood = iota
+	PlayerMoodLostReallyBadly PlayerMood = iota
+	PlayerMoodScared          PlayerMood = iota
+	PlayerMoodWinnable        PlayerMood = iota
+	PlayerMoodBarelyWinnable  PlayerMood = iota
+	PlayerMoodWon             PlayerMood = iota
+)
+
+func (p PlayerMood) JSONString() string {
+	switch p {
+	case PlayerMoodNone:
+		return "None"
+	case PlayerMoodLost:
+		return "Lost"
+	case PlayerMoodLostBadly:
+		return "LostBadly"
+	case PlayerMoodLostReallyBadly:
+		return "LostReallyBadly"
+	case PlayerMoodScared:
+		return "Scared"
+	case PlayerMoodWinnable:
+		return "Winnable"
+	case PlayerMoodBarelyWinnable:
+		return "BarelyWinnable"
+	case PlayerMoodWon:
+		return "Won"
+	}
+	panic(fmt.Errorf("invalid PlayerMood value: %d", p))
+}
+
+func (p PlayerMood) MarshalJSON() ([]byte, error) {
+	jsonString := fmt.Sprintf(`"%s"`, p.JSONString())
+	return []byte(jsonString), nil
+}
+
+func (p PlayerMood) MarshalText() (text []byte, err error) {
+	return []byte(p.JSONString()), nil
+}
+
+func parsePlayerMood(text string) (PlayerMood, error) {
+	switch text {
+	case "None":
+		return PlayerMoodNone, nil
+	case "Lost":
+		return PlayerMoodLost, nil
+	case "LostBadly":
+		return PlayerMoodLostBadly, nil
+	case "LostReallyBadly":
+		return PlayerMoodLostReallyBadly, nil
+	case "Scared":
+		return PlayerMoodScared, nil
+	case "Winnable":
+		return PlayerMoodWinnable, nil
+	case "BarelyWinnable":
+		return PlayerMoodBarelyWinnable, nil
+	case "Won":
+		return PlayerMoodWon, nil
+	}
+	return PlayerMoodLost, errors.New(fmt.Sprintf("unable to parse player state %s", text))
+}
+
+func (p *PlayerMood) UnmarshalJSON(data []byte) error {
+	var str string
+	err := json.Unmarshal(data, &str)
+	if err != nil {
+		return err
+	}
+	status, err := parsePlayerMood(str)
+	if err != nil {
+		return err
+	}
+	*p = status
+	return nil
+}
+
+func (p *PlayerMood) UnmarshalText(text []byte) (err error) {
+	status, err := parsePlayerMood(string(text))
+	if err != nil {
+		return err
+	}
+	*p = status
+	return nil
 }
