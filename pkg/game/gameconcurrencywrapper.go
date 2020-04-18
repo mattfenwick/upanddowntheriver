@@ -163,7 +163,7 @@ func (gcw *GameConcurrencyWrapper) GetPlayerModel(player string) (*PlayerModel, 
 	var pm *PlayerModel
 	var err error
 	gcw.Actions <- &Action{"getJsonModel", func() error {
-		pm, err = gcw.Game.playerModel(player)
+		pm, err = newPlayerModel(gcw.Game, player)
 		close(done)
 		return nil
 	}}

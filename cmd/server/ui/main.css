@@ -86,31 +86,28 @@
     margin: 4px;
 }
 
-#wagers {
-    border: 1px dashed;
-    padding: 8px;
-    margin: 4px;
-}
-
 #cards-hand-wagers {
     display: flex;
     justify-content: space-between;
+}
+
+#status {
+    border: 1px dashed;
+    padding: 8px;
+    margin: 4px;
+    font-size: large;
 }
 
 .my-cards-my-turn {
     /*border: 2px dashed red;*/
 }
 
-#wagers {
-    font-size: large;
-}
-
-#wagers th, #wagers td {
+#status th, #status td {
     padding: 5px;
     text-align: center;
 }
 
-#wagers button, #wagers select {
+#status button, #status select {
     font-size: large;
 }
 

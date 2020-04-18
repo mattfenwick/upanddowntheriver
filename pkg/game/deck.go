@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"time"
 )
 
@@ -132,6 +133,46 @@ func (sd *StandardDeck) Compare(l *Card, r *Card) int {
 
 func (sd *StandardDeck) Shuffle() []*Card {
 	return Shuffle(Cards(sd))
+}
+
+// for larger games
+
+type DoubleStandardDeck struct {
+	StandardDeck *StandardDeck
+}
+
+func NewDoubleStandardDeck() *DoubleStandardDeck {
+	return &DoubleStandardDeck{
+		StandardDeck: NewStandardDeck(),
+	}
+}
+
+func (dsd *DoubleStandardDeck) Suits() []string {
+	return dsd.StandardDeck.DeckSuits
+}
+
+func (dsd *DoubleStandardDeck) Numbers() []string {
+	nums := append(dsd.Numbers(), dsd.Numbers()...)
+	sort.Slice(nums, func(i, j int) bool {
+		return dsd.StandardDeck.NumberRatings[nums[i]] < dsd.StandardDeck.NumberRatings[nums[j]]
+	})
+	return nums
+}
+
+func (dsd *DoubleStandardDeck) CompareNumbers(l string, r string) int {
+	return dsd.StandardDeck.CompareNumbers(l, r)
+}
+
+func (dsd *DoubleStandardDeck) CompareSuits(l string, r string) int {
+	return dsd.StandardDeck.CompareSuits(l, r)
+}
+
+func (dsd *DoubleStandardDeck) Compare(l *Card, r *Card) int {
+	return dsd.StandardDeck.Compare(l, r)
+}
+
+func (dsd *DoubleStandardDeck) Shuffle() []*Card {
+	return Shuffle(Cards(dsd))
 }
 
 // for testing purposes:

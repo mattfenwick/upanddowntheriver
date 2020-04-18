@@ -73,5 +73,38 @@ func RunGameTests() {
 				Expect(game.State).To(Equal(GameStateSetup))
 			})
 		})
+
+		getFirstCard := func(cards map[string]*PlayerCard) *Card {
+			for _, c := range cards {
+				return c.Card
+			}
+			panic("no cards found")
+		}
+
+		Describe("Round", func() {
+			It("should rotate players after a round", func() {
+				game := NewGame()
+				Expect(game.addPlayer("abc")).Should(Succeed())
+				Expect(game.addPlayer("def")).Should(Succeed())
+				Expect(game.addPlayer("ghi")).Should(Succeed())
+				Expect(game.setCardsPerPlayer(1)).Should(Succeed())
+
+				Expect(game.Players).To(Equal([]string{"abc", "def", "ghi"}))
+
+				Expect(game.startRound()).Should(Succeed())
+
+				Expect(game.makeWager("abc", 0)).Should(Succeed())
+				Expect(game.makeWager("def", 0)).Should(Succeed())
+				Expect(game.makeWager("ghi", 0)).Should(Succeed())
+
+				Expect(game.playCard("abc", getFirstCard(game.CurrentRound.Players["abc"]))).Should(Succeed())
+				Expect(game.playCard("def", getFirstCard(game.CurrentRound.Players["def"]))).Should(Succeed())
+				Expect(game.playCard("ghi", getFirstCard(game.CurrentRound.Players["ghi"]))).Should(Succeed())
+
+				Expect(game.finishRound()).Should(Succeed())
+
+				Expect(game.Players).To(Equal([]string{"def", "ghi", "abc"}))
+			})
+		})
 	})
 }

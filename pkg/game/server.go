@@ -138,7 +138,14 @@ func SetupHTTPServer(uiDirectory string, responder Responder) {
 				return
 			}
 
-			pm, err := responder.GetPlayerModel(action.Me)
+			// for most actions, return the player model for the player who issued that request
+			player := action.Me
+			// BUT: special case if you remove yourself: return a player model for the empty string
+			if action.RemovePlayer != nil && action.Me == action.RemovePlayer.Player {
+				log.Warnf("player %s removed, returning default model", action.Me)
+				player = ""
+			}
+			pm, err := responder.GetPlayerModel(player)
 			if err != nil {
 				log.Errorf("unable to get player %s model: %+v", action.Me, err)
 				http.Error(w, err.Error(), 400)
