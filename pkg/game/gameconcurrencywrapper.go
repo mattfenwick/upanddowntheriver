@@ -49,10 +49,6 @@ func (gcw *GameConcurrencyWrapper) startActionProcessor() {
 
 // mutators
 
-func (gcw *GameConcurrencyWrapper) ReorderPlayers(players []string) error {
-	return errors.New("TODO")
-}
-
 func (gcw *GameConcurrencyWrapper) SetDeck() error {
 	return errors.New("TODO")
 }
@@ -158,15 +154,14 @@ func (gcw *GameConcurrencyWrapper) GetModel() string {
 	return <-done
 }
 
-func (gcw *GameConcurrencyWrapper) GetPlayerModel(player string) (*PlayerModel, error) {
+func (gcw *GameConcurrencyWrapper) GetPlayerModel(player string) *PlayerModel {
 	done := make(chan struct{})
 	var pm *PlayerModel
-	var err error
 	gcw.Actions <- &Action{"getJsonModel", func() error {
-		pm, err = newPlayerModel(gcw.Game, player)
+		pm = gcw.Game.playerModel(player)
 		close(done)
 		return nil
 	}}
 	<-done
-	return pm, err
+	return pm
 }

@@ -95,6 +95,7 @@ type CurrentHand struct {
 
 type PlayerStatus struct {
 	Player           string
+	IsMe             bool
 	IsNextWagerer    bool
 	IsNextPlayer     bool
 	IsCurrentLeader  bool
@@ -127,36 +128,36 @@ type PlayerModel struct {
 	MyCards []*Card
 }
 
-func newPlayerModel(game *Game, player string) (*PlayerModel, error) {
-	if _, ok := game.PlayersSet[player]; !ok && player != "" {
-		return nil, errors.New(fmt.Sprintf("player %s not found", player))
+func newPlayerModel(game *Game, player string) *PlayerModel {
+	pg := &PlayerGame{
+		Players:        game.Players,
+		CardsPerPlayer: game.CardsPerPlayer,
+	}
+	// empty player, or player not found?  we'll only let them see who's playing and the game config
+	if _, ok := game.PlayersSet[player]; !ok {
+		return &PlayerModel{
+			State: PlayerStateNotJoined,
+			Game:  pg,
+		}
 	}
 
 	var state PlayerState
 	var status *Status
 	var myCards []*Card
-	if player != "" {
-		switch game.State {
-		case GameStateSetup:
-			state = PlayerStateWaitingForPlayers
-			break
-		case GameStateRoundInProgress:
-			state, status, myCards = playerStatusAndCards(game, player)
-		}
-	} else {
-		state = PlayerStateNotJoined
+	switch game.State {
+	case GameStateSetup:
+		state = PlayerStateWaitingForPlayers
+		break
+	case GameStateRoundInProgress:
+		state, status, myCards = playerStatusAndCards(game, player)
 	}
-	model := &PlayerModel{
-		Me:    player,
-		State: state,
-		Game: &PlayerGame{
-			Players:        game.Players,
-			CardsPerPlayer: game.CardsPerPlayer,
-		},
+	return &PlayerModel{
+		Me:      player,
+		State:   state,
+		Game:    pg,
 		Status:  status,
 		MyCards: myCards,
 	}
-	return model, nil
 }
 
 func playerStatusAndCards(game *Game, player string) (PlayerState, *Status, []*Card) {
@@ -205,6 +206,7 @@ func playerStatusAndCards(game *Game, player string) (PlayerState, *Status, []*C
 		}
 		ps := &PlayerStatus{
 			Player:        p,
+			IsMe:          p == player,
 			IsNextWagerer: p == nextWagerPlayer,
 			Wager:         wager,
 			HandsWon:      handsWon,

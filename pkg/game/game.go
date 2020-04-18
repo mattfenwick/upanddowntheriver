@@ -104,6 +104,10 @@ func (game *Game) removePlayer(player string) error {
 	}
 }
 
+func (game *Game) playerModel(player string) *PlayerModel {
+	return newPlayerModel(game, player)
+}
+
 func (game *Game) setCardsPerPlayer(count int) error {
 	maxCardsPerPlayer := len(Cards(game.Deck)) / len(game.Players)
 	if count > maxCardsPerPlayer {

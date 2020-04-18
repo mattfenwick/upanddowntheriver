@@ -11,7 +11,7 @@ import (
 
 type Responder interface {
 	GetModel() string
-	GetPlayerModel(player string) (*PlayerModel, error)
+	GetPlayerModel(player string) *PlayerModel
 	Join(player string) error
 	RemovePlayer(player string) error
 	SetCardsPerPlayer(count int) error
@@ -65,13 +65,7 @@ func SetupHTTPServer(uiDirectory string, responder Responder) {
 			urlParams := r.URL.Query()
 			if players, ok := urlParams["player"]; len(players) > 0 && ok {
 				player := players[0]
-				var pm *PlayerModel
-				pm, err = responder.GetPlayerModel(player)
-				if err != nil {
-					log.Errorf("unable to get player %s model: %+v", player, err)
-					http.Error(w, err.Error(), 400)
-					return
-				}
+				pm := responder.GetPlayerModel(player)
 				var pmBytes []byte
 				pmBytes, err = json.MarshalIndent(pm, "", "  ")
 				if err != nil {
@@ -138,19 +132,7 @@ func SetupHTTPServer(uiDirectory string, responder Responder) {
 				return
 			}
 
-			// for most actions, return the player model for the player who issued that request
-			player := action.Me
-			// BUT: special case if you remove yourself: return a player model for the empty string
-			if action.RemovePlayer != nil && action.Me == action.RemovePlayer.Player {
-				log.Warnf("player %s removed, returning default model", action.Me)
-				player = ""
-			}
-			pm, err := responder.GetPlayerModel(player)
-			if err != nil {
-				log.Errorf("unable to get player %s model: %+v", action.Me, err)
-				http.Error(w, err.Error(), 400)
-				return
-			}
+			pm := responder.GetPlayerModel(action.Me)
 			pmBytes, err := json.MarshalIndent(pm, "", "  ")
 			if err != nil {
 				log.Errorf("unable to serialize json: %+v", err)

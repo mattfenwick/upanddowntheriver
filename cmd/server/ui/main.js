@@ -207,13 +207,22 @@ function Me(didClickJoin) {
         didClickJoin(name);
     });
     this.name = "";
+    this.getName = $("#me-get-name");
+    this.showName = $("#me-show-name");
 }
 
 Me.prototype.update = function(name) {
     if ( name === this.name ) { return; }
     this.name = name;
-    $("#me-show-name").append(name);
-    $("#me-get-name").hide();
+    if ( name === "" ) {
+        this.showName.hide();
+        this.getName.show();
+    } else {
+        this.showName.empty();
+        this.showName.append(name);
+        this.showName.show();
+        this.getName.hide();
+    }
 };
 
 // Game
@@ -444,8 +453,6 @@ function Status(didChooseWager) {
         didChooseWager(wager);
     });
 
-    this.me = "";
-
     this.setOtherStates();
 }
 
@@ -453,29 +460,28 @@ Status.prototype.setOtherStates = function() {
     this.cont.hide();
 };
 
-Status.prototype.setWagerTurn = function(me, statuses, cardsPerPlayer) {
-    this.setPlayerStatuses(me, statuses, cardsPerPlayer);
+Status.prototype.setWagerTurn = function(statuses, cardsPerPlayer) {
+    this.setPlayerStatuses(statuses, cardsPerPlayer);
     this.cont.show();
 };
 
-Status.prototype.setPlayCardTurn = function(me, statuses) {
-    this.setPlayerStatuses(me, statuses, null);
+Status.prototype.setPlayCardTurn = function(statuses) {
+    this.setPlayerStatuses(statuses, null);
     this.cont.show();
 };
 
-Status.prototype.setRoundFinished = function(me, statuses) {
-    this.setPlayerStatuses(me, statuses, null);
+Status.prototype.setRoundFinished = function(statuses) {
+    this.setPlayerStatuses(statuses, null);
     this.cont.show();
 };
 
-function buildStatusTableModel(me, statuses, cardsPerPlayer) {
+function buildStatusTableModel(statuses, cardsPerPlayer) {
     let rows = [];
     statuses.forEach(function(status) {
-        const player = status.Player;
         let wager = {
             'count': status.Wager,
         };
-        if ( status.IsNextWagerer && player === me ) {
+        if ( status.IsNextWagerer && status.IsMe ) {
             wager.options = [];
             for ( let i = 0; i <= cardsPerPlayer; i++ ) {
                 wager.options.push(i);
@@ -485,7 +491,7 @@ function buildStatusTableModel(me, statuses, cardsPerPlayer) {
         let pc = status.PreviousCard;
         let row = {
             'classes': {
-                'statuses-me': player === me,
+                'statuses-me': status.IsMe,
                 'statuses-wager-turn': status.IsNextWagerer,
                 'statuses-play-card-turn': status.IsNextPlayer,
                 'statuses-leader': status.IsCurrentLeader,
@@ -516,14 +522,14 @@ function statusSuit(suit) {
     return elems.join("\n");
 }
 
-Status.prototype.setPlayerStatuses = function(me, status, cardsPerPlayer) {
-    let next = [me, status, cardsPerPlayer];
+Status.prototype.setPlayerStatuses = function(status, cardsPerPlayer) {
+    let next = [status, cardsPerPlayer];
     if ( equals(this.current, next) ) {
         return;
     }
     this.current = next;
 
-    let model = buildStatusTableModel(me, status.PlayerStatuses, cardsPerPlayer);
+    let model = buildStatusTableModel(status.PlayerStatuses, cardsPerPlayer);
     this.statusTableBody.empty();
     let ph = status.PreviousHand;
     let ch = status.CurrentHand;
@@ -617,12 +623,9 @@ Model.prototype.updateFromServer = function(ok, data) {
     if ( !ok ) { return; }
 
     let me = data.Me;
+    let game = data.Game;
     this.me.update(me);
     this.myCards.me = me;
-    this.game.me = me;
-    this.round.me = me;
-
-    let game = data.Game;
     switch (data.State) {
         case "NotJoined":
             this.game.setStateNotJoined(game.Players);
@@ -640,20 +643,20 @@ Model.prototype.updateFromServer = function(ok, data) {
             this.game.setOtherStates();
             this.myCards.setWagerTurn(data.MyCards);
             this.round.setWagerTurn(data.Status.TrumpSuit);
-            this.status.setWagerTurn(me, data.Status, game.CardsPerPlayer);
+            this.status.setWagerTurn(data.Status, game.CardsPerPlayer);
             break;
         case "PlayCardTurn":
             let nextPlayer = data.Status.CurrentHand.NextPlayer;
             this.game.setOtherStates();
             this.myCards.setPlayCardTurn(data.MyCards, nextPlayer);
             this.round.setPlayCardTurn(data.Status.TrumpSuit);
-            this.status.setPlayCardTurn(me, data.Status);
+            this.status.setPlayCardTurn(data.Status);
             break;
         case "RoundFinished":
             this.game.setOtherStates();
             this.myCards.setRoundFinished();
             this.round.setRoundFinished(data.Status.TrumpSuit);
-            this.status.setRoundFinished(me, data.Status);
+            this.status.setRoundFinished(data.Status);
             break;
         default:
             throw new Error(`unrecognized state ${data.State}`);
