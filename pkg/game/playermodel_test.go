@@ -9,7 +9,7 @@ func RunPlayerModelTests() {
 	Describe("PlayerModel", func() {
 		It("should calculate won/lost when a round is over", func() {
 			Expect(playerMood(3, 3, 6, 6, false, false)).To(Equal(PlayerMoodWon))
-			Expect(playerMood(0, 0, 6, 6, false, false)).To(Equal(PlayerMoodWon))
+			Expect(playerMood(0, 0, 6, 6, false, false)).To(Equal(PlayerMoodPotato))
 
 			Expect(playerMood(1, 0, 6, 6, false, false)).To(Equal(PlayerMoodLost))
 			Expect(playerMood(2, 0, 6, 6, false, false)).To(Equal(PlayerMoodLostBadly))

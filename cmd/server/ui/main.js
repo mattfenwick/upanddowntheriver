@@ -483,6 +483,7 @@ const moodCharacters = {
     "Scared": "\uD83D\uDE1F",
     "Winnable": "\uD83D\uDE0F",
     "BarelyWinnable": "\uD83D\uDE10",
+    "Potato": "\uD83E\uDD54",
     "Won": "\uD83E\uDD73"
 };
 

@@ -306,6 +306,9 @@ func playerMood(wager int, handsWon int, handsFinished int, totalHands int, hasP
 	// game over?
 	if handsFinished == totalHands {
 		if diff == 0 {
+			if wager == 0 {
+				return PlayerMoodPotato
+			}
 			return PlayerMoodWon
 		}
 		return lostMood(diff)
@@ -346,6 +349,7 @@ const (
 	PlayerMoodScared          PlayerMood = iota
 	PlayerMoodWinnable        PlayerMood = iota
 	PlayerMoodBarelyWinnable  PlayerMood = iota
+	PlayerMoodPotato          PlayerMood = iota
 	PlayerMoodWon             PlayerMood = iota
 )
 
@@ -365,6 +369,8 @@ func (p PlayerMood) JSONString() string {
 		return "Winnable"
 	case PlayerMoodBarelyWinnable:
 		return "BarelyWinnable"
+	case PlayerMoodPotato:
+		return "Potato"
 	case PlayerMoodWon:
 		return "Won"
 	}
@@ -396,6 +402,8 @@ func parsePlayerMood(text string) (PlayerMood, error) {
 		return PlayerMoodWinnable, nil
 	case "BarelyWinnable":
 		return PlayerMoodBarelyWinnable, nil
+	case "Potato":
+		return PlayerMoodPotato, nil
 	case "Won":
 		return PlayerMoodWon, nil
 	}
