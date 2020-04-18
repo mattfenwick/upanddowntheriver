@@ -282,7 +282,7 @@ func playerStatusAndCards(game *Game, player string) (PlayerState, *Status, []*C
 			isWinningCurrentHand := (game.CurrentRound.CurrentHand != nil) && (game.CurrentRound.CurrentHand.Leader == s.Player)
 			hasPlayedForCurrentHand := s.CurrentCard != nil
 			mood := playerMood(*s.Wager, *s.HandsWon, handsFinished, totalHands, hasPlayedForCurrentHand, isWinningCurrentHand)
-			log.Infof("player %s mood for wager %d, hands won %d, hands finished %d, total hands %d, has played %t, is winning current hand %t: %s", s.Player, *s.Wager, *s.HandsWon, handsFinished, totalHands, hasPlayedForCurrentHand, isWinningCurrentHand, mood.JSONString())
+			log.Debugf("player %s mood for wager %d, hands won %d, hands finished %d, total hands %d, has played %t, is winning current hand %t: %s", s.Player, *s.Wager, *s.HandsWon, handsFinished, totalHands, hasPlayedForCurrentHand, isWinningCurrentHand, mood.JSONString())
 			s.Mood = mood
 		}
 	}
@@ -317,7 +317,7 @@ func playerMood(wager int, handsWon int, handsFinished int, totalHands int, hasP
 		maxWins++
 	}
 	minWins := handsWon
-	log.Infof("max, min wins: %d, %d", maxWins, minWins)
+	log.Debugf("max, min wins: %d, %d", maxWins, minWins)
 	if minWins == wager && isWinningCurrentHand {
 		return PlayerMoodScared
 	}
@@ -334,44 +334,6 @@ func playerMood(wager int, handsWon int, handsFinished int, totalHands int, hasP
 		return lostMood(minWins - wager)
 	}
 	panic("not sure how this happened")
-}
-
-func playerMood2(wager int, handsWon int, handsRemaining int, hasPlayedForCurrentHand bool, isWinningCurrentHand bool) PlayerMood {
-	diff := wager - handsWon
-	max := handsWon + handsRemaining
-	// game over?
-	if handsRemaining == 0 {
-		if diff == 0 {
-			return PlayerMoodWon
-		}
-		return lostMood(diff)
-	}
-
-	// lost by going too high
-	if handsWon > wager {
-		return lostMood(diff)
-	}
-
-	// barely winnable: every remaining trick must go a specific way
-	//  - eg: wager 0, won 0, 5 hands remaining
-	//  - eg: wager 3, won 0, 3 hands remaining
-	//  - eg: wager 3, won 3, 3 hands remaining
-	if diff == handsRemaining || diff == 0 {
-		return PlayerMoodBarelyWinnable
-	}
-
-	// winnable: there's some slack, not every single trick has to go a certain way
-	//  - eg: wager 2, won 0, 4 hands remaining
-	//  - eg: wager 2, won 1, 2 hands remaining
-	if diff < handsRemaining && diff > 0 {
-		return PlayerMoodWinnable
-	}
-
-	// lost by going too low
-	//  - eg: wager 4, won 2, 1 hand  remaining => max of 3, miss by 1 => lost
-	//  - eg: wager 6, won 2, 2 hands remaining => max of 4, miss by 2 => lost badly
-	//  - eg: wager 6, won 0, 2 hands remaining => max of 2, miss by 4 => lost really badly
-	return lostMood(wager - max)
 }
 
 type PlayerMood int
