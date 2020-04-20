@@ -2,6 +2,23 @@
 
 $(document).ready(function() {
 
+const entityMap = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '/': '&#x2F;',
+    '`': '&#x60;',
+    '=': '&#x3D;'
+};
+
+function escapeHtml (string) {
+    return String(string).replace(/[&<>"'`=\/]/g, function (s) {
+        return entityMap[s];
+    });
+}
+
 // javascript card characters
 
 let unicodeCards = {
@@ -223,7 +240,7 @@ Me.prototype.update = function(name) {
         this.getName.show();
     } else {
         this.showName.empty();
-        this.showName.append(name);
+        this.showName.append(escapeHtml(name));
         this.showName.show();
         this.getName.hide();
     }
@@ -241,15 +258,16 @@ function Game(didClickRemovePlayer, didChangeCardsPerPlayer, didChangeDeckType, 
     this.startButton = $("#round-start-button");
     this.startButton.click(didClickStartRound);
 
+    let self = this;
+
     // can't use `click` because the elements might be ever-changing
     $(document).on("click", ".game-remove-player", function() {
-        // TODO apparently we're not supposed to use the `player` attribute here
-        let player = $(this).attr('player');
+        let index = parseInt($(this).attr('uadtr-index'), 10);
+        let player = self.players[index];
         console.log("game-remove-player: ${player}");
         didClickRemovePlayer(player);
     });
 
-    let self = this;
     this.cardsPerPlayerSelect = $("#game-cards-per-player");
     this.cardsPerPlayerSelect.change(function() {
         let newCardsPerPlayer = parseInt(self.cardsPerPlayerSelect.val(), 10);
@@ -301,12 +319,12 @@ Game.prototype.setPlayers = function(players, maxCardsPerPlayer) {
     this.maxCardsPerPlayer = maxCardsPerPlayer;
     let domPlayers = $("#game-players");
     domPlayers.empty();
-    players.forEach(function(player) {
+    players.forEach(function(player, ix) {
         domPlayers.append(`
         <tr>
-            <td>${player}</td>
+            <td>${escapeHtml(player)}</td>
             <td>
-                <button class='game-remove-player' player='${player}'>Remove</button>
+                <button class='game-remove-player' uadtr-index='${ix}'>Remove</button>
             </td>
         </tr>`);
     });
@@ -531,7 +549,7 @@ function buildStatusTableModel(statuses, cardsPerPlayer) {
                 'statuses-leader': status.IsCurrentLeader,
                 'statuses-previous-hand-winner': status.IsPreviousWinner,
             },
-            'name': status.Player,
+            'name': escapeHtml(status.Player),
             'mood': moodToUnicode(status.Mood),
             'wager': wager,
             'handsWon': status.HandsWon,
