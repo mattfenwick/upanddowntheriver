@@ -9,13 +9,15 @@ import (
 	"time"
 )
 
+type shuffler func([]*Card) []*Card
+
 type Deck interface {
 	Suits() []string
 	Numbers() []string
 	CompareNumbers(l string, r string) int
 	CompareSuits(l string, r string) int
 	Compare(l *Card, r *Card) int
-	Shuffle() []*Card
+	Shuffle() shuffler
 	DeckType() DeckType
 	Size() int
 }
@@ -42,7 +44,11 @@ func Cards(deck Deck) []*Card {
 	return cards
 }
 
-func Shuffle(cards []*Card) []*Card {
+func Shuffle(deck Deck) []*Card {
+	return deck.Shuffle()(Cards(deck))
+}
+
+func RandomShuffle(cards []*Card) []*Card {
 	cardsCopy := make([]*Card, len(cards))
 	for i, c := range cards {
 		cardsCopy[i] = c
@@ -53,6 +59,10 @@ func Shuffle(cards []*Card) []*Card {
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(cardsCopy), swap)
 	return cardsCopy
+}
+
+func NoShuffle(cards []*Card) []*Card {
+	return cards
 }
 
 func RandomSuit(deck Deck) string {
@@ -69,41 +79,63 @@ func RandomSuit(deck Deck) string {
 	return suitsCopy[0]
 }
 
-type StandardDeck struct {
+type SimpleDeck struct {
 	DeckSuits     []string
 	SuitRatings   map[string]int
 	DeckNumbers   []string
 	NumberRatings map[string]int
+	Type          DeckType
+	shuffle       shuffler
 }
 
-func NewStandardDeck() *StandardDeck {
-	numbers := []string{"2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"}
+func NewSimpleDeck(numbers []string, suits []string, deckType DeckType, shuffle shuffler) *SimpleDeck {
 	ratings := map[string]int{}
 	for i, num := range numbers {
 		ratings[num] = i
 	}
-	suits := []string{"Clubs", "Diamonds", "Hearts", "Spades"}
 	suitRatings := map[string]int{}
 	for i, suit := range suits {
 		suitRatings[suit] = i
 	}
-	return &StandardDeck{
+	return &SimpleDeck{
 		DeckSuits:     suits,
 		SuitRatings:   suitRatings,
 		DeckNumbers:   numbers,
 		NumberRatings: ratings,
+		Type:          deckType,
+		shuffle:       shuffle,
 	}
 }
 
-func (sd *StandardDeck) Suits() []string {
+func NewMiniDeckWithShuffle(shuffle shuffler) *SimpleDeck {
+	numbers := []string{"J", "Q", "K", "A"}
+	suits := []string{"Clubs", "Diamonds", "Hearts", "Spades"}
+	return NewSimpleDeck(numbers, suits, DeckTypeMini, shuffle)
+}
+
+func NewStandardDeckWithShuffle(shuffle shuffler) *SimpleDeck {
+	numbers := []string{"2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"}
+	suits := []string{"Clubs", "Diamonds", "Hearts", "Spades"}
+	return NewSimpleDeck(numbers, suits, DeckTypeStandard, shuffle)
+}
+
+func NewStandardDeck() *SimpleDeck {
+	return NewStandardDeckWithShuffle(RandomShuffle)
+}
+
+func NewDeterministicShuffleDeck() *SimpleDeck {
+	return NewStandardDeckWithShuffle(NoShuffle)
+}
+
+func (sd *SimpleDeck) Suits() []string {
 	return sd.DeckSuits
 }
 
-func (sd *StandardDeck) Numbers() []string {
+func (sd *SimpleDeck) Numbers() []string {
 	return sd.DeckNumbers
 }
 
-func (sd *StandardDeck) CompareNumbers(l string, r string) int {
+func (sd *SimpleDeck) CompareNumbers(l string, r string) int {
 	lRating, ok := sd.NumberRatings[l]
 	if !ok {
 		panic(fmt.Sprintf("invalid value %s, expected one of %+v", l, sd.DeckNumbers))
@@ -115,7 +147,7 @@ func (sd *StandardDeck) CompareNumbers(l string, r string) int {
 	return lRating - rRating
 }
 
-func (sd *StandardDeck) CompareSuits(l string, r string) int {
+func (sd *SimpleDeck) CompareSuits(l string, r string) int {
 	lRating, ok := sd.SuitRatings[l]
 	if !ok {
 		panic(fmt.Sprintf("invalid value %s, expected one of %+v", l, sd.DeckNumbers))
@@ -127,7 +159,7 @@ func (sd *StandardDeck) CompareSuits(l string, r string) int {
 	return lRating - rRating
 }
 
-func (sd *StandardDeck) Compare(l *Card, r *Card) int {
+func (sd *SimpleDeck) Compare(l *Card, r *Card) int {
 	num := sd.CompareNumbers(l.Number, r.Number)
 	if num != 0 {
 		return num
@@ -135,106 +167,68 @@ func (sd *StandardDeck) Compare(l *Card, r *Card) int {
 	return sd.CompareSuits(l.Suit, r.Suit)
 }
 
-func (sd *StandardDeck) Shuffle() []*Card {
-	return Shuffle(Cards(sd))
+func (sd *SimpleDeck) Shuffle() shuffler {
+	return sd.shuffle
 }
 
-func (sd *StandardDeck) DeckType() DeckType {
-	return DeckTypeStandard
+func (sd *SimpleDeck) DeckType() DeckType {
+	return sd.Type
 }
 
-func (sd *StandardDeck) Size() int {
+func (sd *SimpleDeck) Size() int {
 	return len(sd.DeckSuits) * len(sd.DeckNumbers)
 }
 
-// for larger games
-
-type DoubleStandardDeck struct {
-	StandardDeck *StandardDeck
+// DoubleDeck can be used for larger games to increase the number of cards.
+// It has two cards for each number/suit, and otherwise works identically
+// to its underlying deck.
+type DoubleDeck struct {
+	UnderlyingDeck Deck
+	Type           DeckType
 }
 
-func NewDoubleStandardDeck() *DoubleStandardDeck {
-	return &DoubleStandardDeck{
-		StandardDeck: NewStandardDeck(),
-	}
+func NewDoubleDeck(underlyingDeck Deck, deckType DeckType) *DoubleDeck {
+	return &DoubleDeck{UnderlyingDeck: underlyingDeck, Type: deckType}
 }
 
-func (dsd *DoubleStandardDeck) Suits() []string {
-	return dsd.StandardDeck.DeckSuits
+func NewDoubleStandardDeck() *DoubleDeck {
+	return NewDoubleDeck(NewStandardDeck(), DeckTypeDoubleStandard)
 }
 
-func (dsd *DoubleStandardDeck) Numbers() []string {
-	nums := append(dsd.StandardDeck.Numbers(), dsd.StandardDeck.Numbers()...)
+func (dd *DoubleDeck) Suits() []string {
+	return dd.UnderlyingDeck.Suits()
+}
+
+func (dd *DoubleDeck) Numbers() []string {
+	nums := append(dd.UnderlyingDeck.Numbers(), dd.UnderlyingDeck.Numbers()...)
 	sort.Slice(nums, func(i, j int) bool {
-		return dsd.StandardDeck.NumberRatings[nums[i]] < dsd.StandardDeck.NumberRatings[nums[j]]
+		return dd.CompareNumbers(nums[i], nums[j]) < 0
 	})
 	return nums
 }
 
-func (dsd *DoubleStandardDeck) CompareNumbers(l string, r string) int {
-	return dsd.StandardDeck.CompareNumbers(l, r)
+func (dd *DoubleDeck) CompareNumbers(l string, r string) int {
+	return dd.UnderlyingDeck.CompareNumbers(l, r)
 }
 
-func (dsd *DoubleStandardDeck) CompareSuits(l string, r string) int {
-	return dsd.StandardDeck.CompareSuits(l, r)
+func (dd *DoubleDeck) CompareSuits(l string, r string) int {
+	return dd.UnderlyingDeck.CompareSuits(l, r)
 }
 
-func (dsd *DoubleStandardDeck) Compare(l *Card, r *Card) int {
-	return dsd.StandardDeck.Compare(l, r)
+func (dd *DoubleDeck) Compare(l *Card, r *Card) int {
+	return dd.UnderlyingDeck.Compare(l, r)
 }
 
-func (dsd *DoubleStandardDeck) Shuffle() []*Card {
-	return Shuffle(Cards(dsd))
+func (dd *DoubleDeck) Shuffle() shuffler {
+	return dd.UnderlyingDeck.Shuffle()
 }
 
-func (dsd *DoubleStandardDeck) DeckType() DeckType {
-	return DeckTypeDoubleStandard
+func (dd *DoubleDeck) DeckType() DeckType {
+	return dd.Type
 }
 
-func (dsd *DoubleStandardDeck) Size() int {
-	return 2 * dsd.StandardDeck.Size()
-}
-
-// for testing purposes:
-
-type DeterministicShuffleDeck struct {
-	StandardDeck *StandardDeck
-}
-
-func NewDeterministicShuffleDeck() *DeterministicShuffleDeck {
-	return &DeterministicShuffleDeck{StandardDeck: NewStandardDeck()}
-}
-
-func (dsd *DeterministicShuffleDeck) Suits() []string {
-	return dsd.StandardDeck.Suits()
-}
-
-func (dsd *DeterministicShuffleDeck) Numbers() []string {
-	return dsd.StandardDeck.Numbers()
-}
-
-func (dsd *DeterministicShuffleDeck) CompareNumbers(l string, r string) int {
-	return dsd.StandardDeck.CompareNumbers(l, r)
-}
-
-func (dsd *DeterministicShuffleDeck) CompareSuits(l string, r string) int {
-	return dsd.StandardDeck.CompareSuits(l, r)
-}
-
-func (dsd *DeterministicShuffleDeck) Compare(l *Card, r *Card) int {
-	return dsd.StandardDeck.Compare(l, r)
-}
-
-func (dsd *DeterministicShuffleDeck) Shuffle() []*Card {
-	return Cards(dsd.StandardDeck)
-}
-
-func (dsd *DeterministicShuffleDeck) DeckType() DeckType {
-	return DeckTypeDeterministicStandard
-}
-
-func (dsd *DeterministicShuffleDeck) Size() int {
-	return dsd.StandardDeck.Size()
+func (dd *DoubleDeck) Size() int {
+	return 2 * dd.UnderlyingDeck.Size()
 }
 
 // deck type
@@ -242,6 +236,10 @@ func (dsd *DeterministicShuffleDeck) Size() int {
 type DeckType string
 
 const (
+	// use Custom if your deck isn't one of the predefined types
+	DeckTypeCustom                DeckType = "DeckTypeCustom"
+	DeckTypeMini                  DeckType = "DeckTypeMini"
+	DeckTypeDoubleMini            DeckType = "DeckTypeDoubleMini"
 	DeckTypeStandard              DeckType = "DeckTypeStandard"
 	DeckTypeDoubleStandard        DeckType = "DeckTypeDoubleStandard"
 	DeckTypeDeterministicStandard DeckType = "DeckTypeDeterministicStandard"
@@ -249,6 +247,12 @@ const (
 
 func (d DeckType) JSONString() string {
 	switch d {
+	case DeckTypeCustom:
+		return "DeckTypeCustom"
+	case DeckTypeMini:
+		return "DeckTypeMini"
+	case DeckTypeDoubleMini:
+		return "DeckTypeDoubleMini"
 	case DeckTypeStandard:
 		return "Standard"
 	case DeckTypeDoubleStandard:
@@ -270,6 +274,12 @@ func (d DeckType) MarshalText() (text []byte, err error) {
 
 func parseDeckType(text string) (DeckType, error) {
 	switch text {
+	case "Custom":
+		return DeckTypeCustom, nil
+	case "Mini":
+		return DeckTypeMini, nil
+	case "DoubleMini":
+		return DeckTypeDoubleMini, nil
 	case "Standard":
 		return DeckTypeStandard, nil
 	case "DoubleStandard":

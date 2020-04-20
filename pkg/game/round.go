@@ -129,7 +129,7 @@ func NewRound(players []string, deck Deck, cardsPerPlayer int) *Round {
 }
 
 func (round *Round) deal() {
-	cards := round.Deck.Shuffle()
+	cards := Shuffle(round.Deck)
 	j := 0
 	for i := 0; i < round.CardsPerPlayer; i++ {
 		for _, player := range round.PlayersOrder {
