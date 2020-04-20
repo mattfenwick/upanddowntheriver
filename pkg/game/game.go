@@ -76,6 +76,10 @@ func (game *Game) join(player string) error {
 	if game.State != GameStateSetup {
 		return errors.New(fmt.Sprintf("can't join as %s, in state %s", player, game.State.String()))
 	}
+	if len(player) > 20 {
+		// just take the first 20 characters so as not to get overwhelmed by excessively long names
+		player = player[:20]
+	}
 	if player == "" {
 		return errors.New("invalid name: empty")
 	}

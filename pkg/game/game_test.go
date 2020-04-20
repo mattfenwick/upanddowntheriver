@@ -47,6 +47,15 @@ func RunGameTests() {
 				Expect(game.Players).To(Equal([]string{"abc", "def", "ghi"}))
 			})
 
+			It("should truncate names longer than 20 characters", func() {
+				game := NewGame()
+				Expect(game.join("abc")).Should(Succeed())
+				abcs := "abcdefghijklmnopqrstuvwxyz"
+				Expect(game.join(abcs)).Should(Succeed())
+
+				Expect(game.Players).To(Equal([]string{"abc", "abcdefghijklmnopqrst"}))
+			})
+
 			It("should handle setCardsPerPlayer to max", func() {
 				game := NewGame()
 				Expect(game.join("abc")).Should(Succeed())
