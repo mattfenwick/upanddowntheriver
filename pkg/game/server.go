@@ -15,6 +15,7 @@ type Responder interface {
 	Join(player string) error
 	RemovePlayer(player string) error
 	SetCardsPerPlayer(count int) error
+	SetDeckType(deckType DeckType) error
 	StartRound() error
 	MakeWager(player string, hands int) error
 	PlayCard(player string, card *Card) error
@@ -37,6 +38,10 @@ type SetCardsPerPlayerAction struct {
 	Count int
 }
 
+type SetDeckTypePlayerAction struct {
+	DeckType DeckType
+}
+
 type StartRoundAction struct{}
 
 type FinishRoundAction struct{}
@@ -49,6 +54,7 @@ type PlayerAction struct {
 	PlayCard          *Card
 	RemovePlayer      *RemovePlayerAction
 	SetCardsPerPlayer *SetCardsPerPlayerAction
+	SetDeckType       *SetDeckTypePlayerAction
 	StartRound        *StartRoundAction
 	FinishRound       *FinishRoundAction
 }
@@ -114,6 +120,8 @@ func SetupHTTPServer(uiDirectory string, responder Responder) {
 				actionErr = responder.RemovePlayer(action.RemovePlayer.Player)
 			} else if action.SetCardsPerPlayer != nil {
 				actionErr = responder.SetCardsPerPlayer(action.SetCardsPerPlayer.Count)
+			} else if action.SetDeckType != nil {
+				actionErr = responder.SetDeckType(action.SetDeckType.DeckType)
 			} else if action.StartRound != nil {
 				actionErr = responder.StartRound()
 			} else if action.MakeWager != nil {

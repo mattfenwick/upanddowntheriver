@@ -65,6 +65,18 @@ func (gcw *GameConcurrencyWrapper) SetCardsPerPlayer(count int) error {
 	return <-done
 }
 
+func (gcw *GameConcurrencyWrapper) SetDeckType(deckType DeckType) error {
+	done := make(chan error)
+	gcw.Actions <- &Action{"setDeckType", func() error {
+		err := gcw.Game.setDeckType(deckType)
+		go func() {
+			done <- err
+		}()
+		return err
+	}}
+	return <-done
+}
+
 func (gcw *GameConcurrencyWrapper) Join(player string) error {
 	done := make(chan error)
 	gcw.Actions <- &Action{"join", func() error {

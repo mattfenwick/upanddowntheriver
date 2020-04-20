@@ -1,7 +1,9 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"math/rand"
 	"sort"
 	"time"
@@ -14,6 +16,8 @@ type Deck interface {
 	CompareSuits(l string, r string) int
 	Compare(l *Card, r *Card) int
 	Shuffle() []*Card
+	DeckType() DeckType
+	Size() int
 }
 
 type Card struct {
@@ -135,6 +139,14 @@ func (sd *StandardDeck) Shuffle() []*Card {
 	return Shuffle(Cards(sd))
 }
 
+func (sd *StandardDeck) DeckType() DeckType {
+	return DeckTypeStandard
+}
+
+func (sd *StandardDeck) Size() int {
+	return len(sd.DeckSuits) * len(sd.DeckNumbers)
+}
+
 // for larger games
 
 type DoubleStandardDeck struct {
@@ -152,7 +164,7 @@ func (dsd *DoubleStandardDeck) Suits() []string {
 }
 
 func (dsd *DoubleStandardDeck) Numbers() []string {
-	nums := append(dsd.Numbers(), dsd.Numbers()...)
+	nums := append(dsd.StandardDeck.Numbers(), dsd.StandardDeck.Numbers()...)
 	sort.Slice(nums, func(i, j int) bool {
 		return dsd.StandardDeck.NumberRatings[nums[i]] < dsd.StandardDeck.NumberRatings[nums[j]]
 	})
@@ -173,6 +185,14 @@ func (dsd *DoubleStandardDeck) Compare(l *Card, r *Card) int {
 
 func (dsd *DoubleStandardDeck) Shuffle() []*Card {
 	return Shuffle(Cards(dsd))
+}
+
+func (dsd *DoubleStandardDeck) DeckType() DeckType {
+	return DeckTypeDoubleStandard
+}
+
+func (dsd *DoubleStandardDeck) Size() int {
+	return 2 * dsd.StandardDeck.Size()
 }
 
 // for testing purposes:
@@ -207,4 +227,78 @@ func (dsd *DeterministicShuffleDeck) Compare(l *Card, r *Card) int {
 
 func (dsd *DeterministicShuffleDeck) Shuffle() []*Card {
 	return Cards(dsd.StandardDeck)
+}
+
+func (dsd *DeterministicShuffleDeck) DeckType() DeckType {
+	return DeckTypeDeterministicStandard
+}
+
+func (dsd *DeterministicShuffleDeck) Size() int {
+	return dsd.StandardDeck.Size()
+}
+
+// deck type
+
+type DeckType string
+
+const (
+	DeckTypeStandard              DeckType = "DeckTypeStandard"
+	DeckTypeDoubleStandard        DeckType = "DeckTypeDoubleStandard"
+	DeckTypeDeterministicStandard DeckType = "DeckTypeDeterministicStandard"
+)
+
+func (d DeckType) JSONString() string {
+	switch d {
+	case DeckTypeStandard:
+		return "Standard"
+	case DeckTypeDoubleStandard:
+		return "DoubleStandard"
+	case DeckTypeDeterministicStandard:
+		return "DeterministicStandard"
+	}
+	panic(fmt.Errorf("invalid DeckType value: %s", d))
+}
+
+func (d DeckType) MarshalJSON() ([]byte, error) {
+	jsonString := fmt.Sprintf(`"%s"`, d.JSONString())
+	return []byte(jsonString), nil
+}
+
+func (d DeckType) MarshalText() (text []byte, err error) {
+	return []byte(d.JSONString()), nil
+}
+
+func parseDeckType(text string) (DeckType, error) {
+	switch text {
+	case "Standard":
+		return DeckTypeStandard, nil
+	case "DoubleStandard":
+		return DeckTypeDoubleStandard, nil
+	case "DeterministicStandard":
+		return DeckTypeDeterministicStandard, nil
+	}
+	return DeckTypeStandard, errors.New(fmt.Sprintf("unable to parse deck type %s", text))
+}
+
+func (d *DeckType) UnmarshalJSON(data []byte) error {
+	var str string
+	err := json.Unmarshal(data, &str)
+	if err != nil {
+		return err
+	}
+	status, err := parseDeckType(str)
+	if err != nil {
+		return err
+	}
+	*d = status
+	return nil
+}
+
+func (d *DeckType) UnmarshalText(text []byte) (err error) {
+	status, err := parseDeckType(string(text))
+	if err != nil {
+		return err
+	}
+	*d = status
+	return nil
 }

@@ -142,6 +142,10 @@ function postSetCardsPerPlayer(me, cardCount, cont) {
     postAction({'Me': me, 'SetCardsPerPlayer': {'Count': cardCount}}, cont)
 }
 
+function postSetDeckType(me, deckType, cont) {
+    postAction({'Me': me, 'SetDeckType': {'DeckType': deckType}}, cont)
+}
+
 function postStartRound(me, cont) {
     postAction({'Me': me, 'StartRound': {}}, cont)
 }
@@ -227,9 +231,11 @@ Me.prototype.update = function(name) {
 
 // Game
 
-function Game(didClickRemovePlayer, didChangeCardsPerPlayer, didClickStartRound) {
+function Game(didClickRemovePlayer, didChangeCardsPerPlayer, didChangeDeckType, didClickStartRound) {
     this.players = [];
     this.cardsPerPlayer = null;
+    this.maxCardsPerPlayer = null;
+    this.deckType = "";
 
     this.div = $("#game");
     this.startButton = $("#round-start-button");
@@ -252,36 +258,47 @@ function Game(didClickRemovePlayer, didChangeCardsPerPlayer, didClickStartRound)
     });
     this.cardsPerPlayerContainer = $("#card-per-player-container");
 
+    this.deckTypeSelect = $("#deck-type-select");
+    this.deckTypeSelect.change(function() {
+        self.deckType = self.deckTypeSelect.val();
+        didChangeDeckType(self.deckType);
+    });
+    this.deckTypeContainer = $("#deck-type-container");
+
     this.setStateWaitingForPlayers([], 1);
 }
 
 Game.prototype.setStateNotJoined = function(players) {
-    this.setPlayers(players);
+    this.setPlayers(players, null);
     this.div.show();
     $(".game-remove-player").hide();
     this.startButton.hide();
     this.cardsPerPlayerContainer.hide();
+    this.deckTypeContainer.hide();
 };
 
-Game.prototype.setStateWaitingForPlayers = function(players, cardsPerPlayer) {
-    this.setPlayers(players);
+Game.prototype.setStateWaitingForPlayers = function(players, cardsPerPlayer, maxCardsPerPlayer, deckType) {
+    this.setPlayers(players, maxCardsPerPlayer);
     this.setCardsPerPlayer(cardsPerPlayer);
+    this.setDeckType(deckType);
 
     this.div.show();
     $(".game-remove-player").show();
     this.startButton.prop('disabled', this.players.length < 2);
     this.startButton.show();
     this.cardsPerPlayerContainer.show();
+    this.deckTypeContainer.show();
 };
 
 Game.prototype.setOtherStates = function() {
     this.div.hide();
 };
 
-Game.prototype.setPlayers = function(players) {
-    if ( arrayEquals(this.players, players) ) { return; }
+Game.prototype.setPlayers = function(players, maxCardsPerPlayer) {
+    if ( arrayEquals(this.players, players) && (this.maxCardsPerPlayer === maxCardsPerPlayer) ) { return; }
     //
     this.players = players;
+    this.maxCardsPerPlayer = maxCardsPerPlayer;
     let domPlayers = $("#game-players");
     domPlayers.empty();
     players.forEach(function(player) {
@@ -296,21 +313,13 @@ Game.prototype.setPlayers = function(players) {
 
     this.startButton.prop('disabled', players.length < 2);
 
-    this.setCardsPerPlayerOptions();
+    this.setCardsPerPlayerOptions(maxCardsPerPlayer);
 };
 
-Game.prototype.setCardsPerPlayerOptions = function() {
-    let domElem = this.cardsPerPlayerSelect;
-    if ( this.players.length === 0 ) {
-        domElem.prop('disabled', true);
-        return;
-    }
-    domElem.prop('disabled', false);
-    // TODO pull out this 52 constant -- have server report number of cards
-    let maxCards = 52 / this.players.length;
-    domElem.empty();
-    for (let i = 1; i <= maxCards; i++) {
-        domElem.append(`<option value='${i}'>${i}</option>`);
+Game.prototype.setCardsPerPlayerOptions = function(maxCardsPerPlayer) {
+    this.cardsPerPlayerSelect.empty();
+    for (let i = 1; i <= maxCardsPerPlayer; i++) {
+        this.cardsPerPlayerSelect.append(`<option value='${i}'>${i}</option>`);
     }
 };
 
@@ -318,6 +327,12 @@ Game.prototype.setCardsPerPlayer = function(cardsPerPlayer) {
     // if ( this.cardsPerPlayer === cardsPerPlayer ) { return; }
     this.cardsPerPlayerSelect.val(cardsPerPlayer);
     this.cardsPerPlayer = cardsPerPlayer;
+};
+
+Game.prototype.setDeckType = function(deckType) {
+    // if ( this.deckType === deckType ) { return; }
+    this.deckTypeSelect.val(deckType);
+    this.deckType = deckType;
 };
 
 // my cards
@@ -613,10 +628,13 @@ function Model() {
     function didChangeCardsPerPlayer(cardsPerPlayer) {
         self.changeCardsPerPlayer(cardsPerPlayer);
     }
+    function didChangeDeckType(deckType) {
+        self.changeDeckType(deckType);
+    }
     function didClickStartRound() {
         self.startRound();
     }
-    this.game = new Game(didClickRemovePlayer, didChangeCardsPerPlayer, didClickStartRound);
+    this.game = new Game(didClickRemovePlayer, didChangeCardsPerPlayer, didChangeDeckType, didClickStartRound);
 
     function didClickFinishRound() {
         self.finishRound();
@@ -656,7 +674,7 @@ Model.prototype.updateFromServer = function(ok, data) {
             this.status.setOtherStates();
             break;
         case "WaitingForPlayers":
-            this.game.setStateWaitingForPlayers(game.Players, game.CardsPerPlayer);
+            this.game.setStateWaitingForPlayers(game.Players, game.CardsPerPlayer, game.MaxCardsPerPlayer, game.DeckType);
             this.myCards.setOtherStates();
             this.round.setOtherStates();
             this.status.setOtherStates();
@@ -704,6 +722,11 @@ Model.prototype.removePlayer = function(player) {
 Model.prototype.changeCardsPerPlayer = function(count) {
     console.log(`changing cards per player to ${count}`);
     postSetCardsPerPlayer(this.me.name, count, this.updateFromServer.bind(this));
+};
+
+Model.prototype.changeDeckType = function(deckType) {
+    console.log(`changing deck type to ${deckType}`);
+    postSetDeckType(this.me.name, deckType, this.updateFromServer.bind(this));
 };
 
 Model.prototype.startRound = function() {

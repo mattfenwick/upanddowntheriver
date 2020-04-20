@@ -1,8 +1,8 @@
 package game
 
 import (
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 )
 
 type RoundState int
@@ -35,8 +35,59 @@ func (r RoundState) MarshalText() (text []byte, err error) {
 }
 
 type PlayerCard struct {
-	Card     *Card
-	IsPlayed bool
+	Card  *Card
+	Count int
+}
+
+type CardBag struct {
+	Cards map[string]*PlayerCard
+}
+
+func NewCardBag(cards []*Card) *CardBag {
+	cb := &CardBag{Cards: map[string]*PlayerCard{}}
+	for _, card := range cards {
+		cb.add(card)
+	}
+	return cb
+}
+
+func (cb *CardBag) add(card *Card) {
+	key := card.Key()
+	if _, ok := cb.Cards[key]; !ok {
+		cb.Cards[key] = &PlayerCard{
+			Card:  card,
+			Count: 0,
+		}
+	}
+	cb.Cards[key].Count++
+}
+
+func (cb *CardBag) remove(card *Card) error {
+	key := card.Key()
+	if _, ok := cb.Cards[key]; !ok {
+		return errors.New(fmt.Sprintf("can't remove card %+v, not found", card))
+	}
+	cb.Cards[key].Count--
+	if cb.Cards[key].Count == 0 {
+		delete(cb.Cards, key)
+	}
+	return nil
+}
+
+func (cb *CardBag) has(card *Card) bool {
+	_, ok := cb.Cards[card.Key()]
+	return ok
+}
+
+// does return dupes if necessary
+func (cb *CardBag) cards() []*Card {
+	cards := []*Card{}
+	for _, pc := range cb.Cards {
+		for i := 0; i < pc.Count; i++ {
+			cards = append(cards, pc.Card)
+		}
+	}
+	return cards
 }
 
 type Round struct {
@@ -45,7 +96,7 @@ type Round struct {
 	Deck           Deck
 	// Players are ordered
 	PlayersOrder  []string
-	Players       map[string]map[string]*PlayerCard
+	PlayerCards   map[string]*CardBag
 	TrumpSuit     string
 	Wagers        map[string]int
 	WagerSum      int
@@ -56,16 +107,16 @@ type Round struct {
 }
 
 func NewRound(players []string, deck Deck, cardsPerPlayer int) *Round {
-	playersMap := map[string]map[string]*PlayerCard{}
+	playerCards := map[string]*CardBag{}
 	for _, player := range players {
-		playersMap[player] = map[string]*PlayerCard{}
+		playerCards[player] = NewCardBag([]*Card{})
 	}
 	round := &Round{
 		Guid:           NewGuid(),
 		CardsPerPlayer: cardsPerPlayer,
 		Deck:           deck,
 		PlayersOrder:   players,
-		Players:        playersMap,
+		PlayerCards:    playerCards,
 		TrumpSuit:      "",
 		Wagers:         map[string]int{},
 		WagerSum:       0,
@@ -82,7 +133,7 @@ func (round *Round) deal() {
 	j := 0
 	for i := 0; i < round.CardsPerPlayer; i++ {
 		for _, player := range round.PlayersOrder {
-			round.Players[player][cards[j].Key()] = &PlayerCard{Card: cards[j], IsPlayed: false}
+			round.PlayerCards[player].add(cards[j])
 			j++
 		}
 	}
@@ -143,11 +194,6 @@ func (round *Round) startHand() {
 	round.CurrentHand = NewHand(round.Deck, round.TrumpSuit, players)
 }
 
-func (round *Round) playerHasCard(player string, card *Card) bool {
-	_, ok := round.Players[player][card.Key()]
-	return ok
-}
-
 func (round *Round) PlayCard(player string, card *Card) error {
 	if round.State != RoundStateHandInProgress {
 		return errors.New(fmt.Sprintf("expected state RoundStateHandInProgress, found %s", round.State.String()))
@@ -160,19 +206,15 @@ func (round *Round) PlayCard(player string, card *Card) error {
 		return errors.New(fmt.Sprintf("expected player %s, got %s", nextPlayer, player))
 	}
 	// is this a card they have?
-	if !round.playerHasCard(player, card) {
+	if !round.PlayerCards[player].has(card) {
 		return errors.New(fmt.Sprintf("player %s can't play card %+v: does not have it", player, card))
-	}
-	// have they already played this card?
-	if round.Players[player][card.Key()].IsPlayed {
-		return errors.New(fmt.Sprintf("player %s can't play card %+v: already played", player, card))
 	}
 	//is this a card they can legally play?
 	if len(hand.CardsPlayed) > 0 {
 		// must follow suit if possible, otherwise anything goes
 		mustFollowSuit := false
-		for _, pc := range round.Players[player] {
-			if !pc.IsPlayed && pc.Card.Suit == hand.Suit {
+		for _, card := range round.PlayerCards[player].cards() {
+			if card.Suit == hand.Suit {
 				mustFollowSuit = true
 				break
 			}
@@ -182,7 +224,10 @@ func (round *Round) PlayCard(player string, card *Card) error {
 		}
 	}
 	hand.PlayCard(player, card)
-	round.Players[player][card.Key()].IsPlayed = true
+	err := round.PlayerCards[player].remove(card)
+	if err != nil {
+		return errors.WithMessagef(err, "unable to remove card")
+	}
 
 	// have we finished the hand?
 	if len(hand.CardsPlayed) == len(round.PlayersOrder) {

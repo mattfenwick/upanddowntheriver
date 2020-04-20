@@ -83,8 +83,10 @@ func (p *PlayerState) UnmarshalText(text []byte) (err error) {
 }
 
 type PlayerGame struct {
-	Players        []string
-	CardsPerPlayer int
+	Players           []string
+	MaxCardsPerPlayer int
+	CardsPerPlayer    int
+	DeckType          DeckType
 }
 
 type CurrentHand struct {
@@ -131,9 +133,15 @@ type PlayerModel struct {
 }
 
 func newPlayerModel(game *Game, player string) *PlayerModel {
+	maxCardsPerPlayer := 1
+	if len(game.Players) > 0 {
+		maxCardsPerPlayer = game.Deck.Size() / len(game.Players)
+	}
 	pg := &PlayerGame{
-		Players:        game.Players,
-		CardsPerPlayer: game.CardsPerPlayer,
+		Players:           game.Players,
+		MaxCardsPerPlayer: maxCardsPerPlayer,
+		CardsPerPlayer:    game.CardsPerPlayer,
+		DeckType:          game.Deck.DeckType(),
 	}
 	// empty player, or player not found?  we'll only let them see who's playing and the game config
 	if _, ok := game.PlayersSet[player]; !ok {
@@ -164,12 +172,7 @@ func newPlayerModel(game *Game, player string) *PlayerModel {
 
 func playerStatusAndCards(game *Game, player string) (PlayerState, *Status, []*Card) {
 	// get my cards
-	cards := []*Card{}
-	for _, pc := range game.CurrentRound.Players[player] {
-		if !pc.IsPlayed {
-			cards = append(cards, pc.Card)
-		}
-	}
+	cards := game.CurrentRound.PlayerCards[player].cards()
 	// let's sort the cards numerically ascending, then break ties with suits
 	sort.Slice(cards, func(i, j int) bool {
 		return game.Deck.Compare(cards[i], cards[j]) < 0

@@ -79,8 +79,10 @@ func RunGameTests() {
 				Me:    "",
 				State: PlayerStateNotJoined,
 				Game: &PlayerGame{
-					Players:        []string{"abc", "def", "ghi"},
-					CardsPerPlayer: 1,
+					Players:           []string{"abc", "def", "ghi"},
+					MaxCardsPerPlayer: 17,
+					CardsPerPlayer:    1,
+					DeckType:          DeckTypeStandard,
 				},
 			}
 
@@ -128,11 +130,21 @@ func RunGameTests() {
 				Expect(game.startRound()).ToNot(BeNil())
 				Expect(game.State).To(Equal(GameStateSetup))
 			})
+
+			It("should calculate the right maxCardsPerPlayer number for different deck sizes", func() {
+				game := NewGame()
+				game.Deck = NewDoubleStandardDeck()
+				Expect(game.join("abc")).Should(Succeed())
+				Expect(game.join("def")).Should(Succeed())
+				Expect(game.join("ghi")).Should(Succeed())
+
+				Expect(game.playerModel("abc").Game.MaxCardsPerPlayer).To(Equal(34))
+			})
 		})
 
-		getFirstCard := func(cards map[string]*PlayerCard) *Card {
-			for _, c := range cards {
-				return c.Card
+		getFirstCard := func(cardBag *CardBag) *Card {
+			for _, c := range cardBag.cards() {
+				return c
 			}
 			panic("no cards found")
 		}
@@ -153,9 +165,9 @@ func RunGameTests() {
 				Expect(game.makeWager("def", 0)).Should(Succeed())
 				Expect(game.makeWager("ghi", 0)).Should(Succeed())
 
-				Expect(game.playCard("abc", getFirstCard(game.CurrentRound.Players["abc"]))).Should(Succeed())
-				Expect(game.playCard("def", getFirstCard(game.CurrentRound.Players["def"]))).Should(Succeed())
-				Expect(game.playCard("ghi", getFirstCard(game.CurrentRound.Players["ghi"]))).Should(Succeed())
+				Expect(game.playCard("abc", getFirstCard(game.CurrentRound.PlayerCards["abc"]))).Should(Succeed())
+				Expect(game.playCard("def", getFirstCard(game.CurrentRound.PlayerCards["def"]))).Should(Succeed())
+				Expect(game.playCard("ghi", getFirstCard(game.CurrentRound.PlayerCards["ghi"]))).Should(Succeed())
 
 				Expect(game.finishRound()).Should(Succeed())
 
@@ -176,14 +188,12 @@ func RunGameTests() {
 				Expect(game.makeWager("def", 2)).Should(Succeed())
 				Expect(game.makeWager("ghi", 0)).Should(Succeed())
 
-				// TODO this is a wonky
 				pm1 := game.playerModel("abc").Status.PlayerStatuses
 				Expect(pm1[0].Mood).To(Equal(PlayerMoodBarelyWinnable))
 				Expect(pm1[1].Mood).To(Equal(PlayerMoodWinnable))
 				Expect(pm1[2].Mood).To(Equal(PlayerMoodBarelyWinnable))
 
-				// TODO need a deterministic shuffle deck
-				//Expect
+				// TODO track moods through more hands, to the end of the round
 			})
 		})
 	})

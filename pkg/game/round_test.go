@@ -39,7 +39,7 @@ func RunRoundTests() {
 				Expect(round.PlayersOrder).To(Equal(players))
 				Expect(round.Wagers).To(Equal(map[string]int{}))
 				for _, player := range round.PlayersOrder {
-					Expect(len(round.Players[player])).To(Equal(3))
+					Expect(len(round.PlayerCards[player].cards())).To(Equal(3))
 				}
 				Expect(round.FinishedHands).To(Equal([]*Hand{}))
 			})
@@ -49,20 +49,21 @@ func RunRoundTests() {
 			It("should deal the right number of cards", func() {
 				round := NewRound(players, deck, 5)
 
-				Expect(len(round.Players)).To(Equal(3))
+				Expect(len(round.PlayerCards)).To(Equal(3))
 				Expect(round.State).To(Equal(RoundStateWagers))
 
-				for _, cards := range round.Players {
-					Expect(len(cards)).To(Equal(5))
+				for _, cardBag := range round.PlayerCards {
+					Expect(len(cardBag.cards())).To(Equal(5))
 				}
 			})
 
-			It("should not deal the same card multiple times", func() {
+			It("should not deal the same card multiple times from a deck with no duplicates", func() {
 				round := NewRound(players, deck, 17)
 
 				keys := map[string]bool{}
-				for _, cards := range round.Players {
-					for key, _ := range cards {
+				for _, cardBag := range round.PlayerCards {
+					for _, card := range cardBag.cards() {
+						key := card.Key()
 						Expect(keys[key]).To(BeFalse())
 						keys[key] = true
 					}
@@ -233,12 +234,12 @@ func RunRoundTests() {
 				Expect(round.PlayCard("jimbo", threeOfClubs)).Should(Succeed())
 				Expect(round.PlayCard("alfonso", fourOfClubs)).Should(Succeed())
 
-				Expect(round.Players["player1"]["Clubs-2"].IsPlayed).To(BeTrue())
-				Expect(round.Players["player1"]["Clubs-5"].IsPlayed).To(BeFalse())
-				Expect(round.Players["jimbo"]["Clubs-3"].IsPlayed).To(BeTrue())
-				Expect(round.Players["jimbo"]["Clubs-6"].IsPlayed).To(BeFalse())
-				Expect(round.Players["alfonso"]["Clubs-4"].IsPlayed).To(BeTrue())
-				Expect(round.Players["alfonso"]["Clubs-7"].IsPlayed).To(BeFalse())
+				Expect(round.PlayerCards["player1"].has(twoOfClubs)).To(BeFalse())
+				Expect(round.PlayerCards["player1"].has(fiveOfClubs)).To(BeTrue())
+				Expect(round.PlayerCards["jimbo"].has(threeOfClubs)).To(BeFalse())
+				Expect(round.PlayerCards["jimbo"].has(sixOfClubs)).To(BeTrue())
+				Expect(round.PlayerCards["alfonso"].has(fourOfClubs)).To(BeFalse())
+				Expect(round.PlayerCards["alfonso"].has(sevenOfClubs)).To(BeTrue())
 			})
 		})
 

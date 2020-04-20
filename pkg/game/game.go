@@ -109,11 +109,31 @@ func (game *Game) playerModel(player string) *PlayerModel {
 }
 
 func (game *Game) setCardsPerPlayer(count int) error {
+	if game.State != GameStateSetup {
+		return errors.New(fmt.Sprintf("can't set cards per player, in state %s", game.State.String()))
+	}
 	maxCardsPerPlayer := len(Cards(game.Deck)) / len(game.Players)
 	if count > maxCardsPerPlayer {
 		return errors.New(fmt.Sprintf("requested cardsPerPlayer of %d, which is greater than the maxCardsPerPlayer of %d", count, maxCardsPerPlayer))
 	}
 	game.CardsPerPlayer = count
+	return nil
+}
+
+func (game *Game) setDeckType(deckType DeckType) error {
+	if game.State != GameStateSetup {
+		return errors.New(fmt.Sprintf("can't set deck type, in state %s", game.State.String()))
+	}
+	switch deckType {
+	case DeckTypeStandard:
+		game.Deck = NewStandardDeck()
+	case DeckTypeDoubleStandard:
+		game.Deck = NewDoubleStandardDeck()
+	case DeckTypeDeterministicStandard:
+		game.Deck = NewDeterministicShuffleDeck()
+	default:
+		return errors.New(fmt.Sprintf("invalid deck type %s", deckType))
+	}
 	return nil
 }
 
