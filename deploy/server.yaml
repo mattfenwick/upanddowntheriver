@@ -23,7 +23,7 @@ spec:
           configMap:
             name: up-and-down-the-river-config
       containers:
-        - image: docker.io/mfenwick100/upanddowntheriver:master
+        - image: docker.io/mfenwick100/upanddowntheriver:v0.2.0
           imagePullPolicy: Always
           name: up-and-down-the-river
           command:
