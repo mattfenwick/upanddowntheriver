@@ -1,9 +1,22 @@
 package game
 
 import (
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 )
+
+func joinGame(game *Game, player string) error {
+	addedPlayer, err := game.join(player)
+	if err != nil {
+		return err
+	}
+	if addedPlayer != player {
+		return errors.New(fmt.Sprintf("attempted to add player %s, got player %s added instead", player, addedPlayer))
+	}
+	return nil
+}
 
 func RunGameTests() {
 	Describe("Game", func() {
@@ -22,46 +35,49 @@ func RunGameTests() {
 		Describe("Setup", func() {
 			It("should add players", func() {
 				game := NewGame()
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("def")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
 				Expect(game.Players).To(Equal([]string{"abc", "def"}))
 			})
 
 			It("should reject empty string for player name", func() {
 				game := NewGame()
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("")).ShouldNot(Succeed())
-				Expect(game.join("def")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "")).ShouldNot(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
 				Expect(game.Players).To(Equal([]string{"abc", "def"}))
 			})
 
 			It("should not add the same player twice; however, doing so is not an error", func() {
 				game := NewGame()
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("def")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
 				Expect(game.Players).To(Equal([]string{"abc", "def"}))
 
-				Expect(game.join("def")).Should(Succeed())
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("ghi")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "ghi")).Should(Succeed())
 				Expect(game.Players).To(Equal([]string{"abc", "def", "ghi"}))
 			})
 
 			It("should truncate names longer than 20 characters", func() {
 				game := NewGame()
-				Expect(game.join("abc")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
 				abcs := "abcdefghijklmnopqrstuvwxyz"
-				Expect(game.join(abcs)).Should(Succeed())
+				err := joinGame(game, abcs)
+				Expect(err).ShouldNot(Succeed())
+				msg := "attempted to add player abcdefghijklmnopqrstuvwxyz, got player abcdefghijklmnopqrst added instead"
+				Expect(err.Error()).Should(Equal(msg))
 
 				Expect(game.Players).To(Equal([]string{"abc", "abcdefghijklmnopqrst"}))
 			})
 
 			It("should handle setCardsPerPlayer to max", func() {
 				game := NewGame()
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("def")).Should(Succeed())
-				Expect(game.join("ghi")).Should(Succeed())
-				Expect(game.join("jkl")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
+				Expect(joinGame(game, "ghi")).Should(Succeed())
+				Expect(joinGame(game, "jkl")).Should(Succeed())
 				Expect(game.Players).To(Equal([]string{"abc", "def", "ghi", "jkl"}))
 
 				Expect(game.setCardsPerPlayer(13)).To(Succeed())
@@ -71,9 +87,9 @@ func RunGameTests() {
 			It("should handle removing players that exist, and fail to remove players that don't exist", func() {
 				game := NewGame()
 
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("def")).Should(Succeed())
-				Expect(game.join("ghi")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
+				Expect(joinGame(game, "ghi")).Should(Succeed())
 
 				Expect(game.Players).To(Equal([]string{"abc", "def", "ghi"}))
 
@@ -97,9 +113,9 @@ func RunGameTests() {
 
 			It("should return an 'empty' model for an 'empty' player, no matter whether the game's in progress", func() {
 				game := NewGame()
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("def")).Should(Succeed())
-				Expect(game.join("ghi")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
+				Expect(joinGame(game, "ghi")).Should(Succeed())
 
 				pm := game.playerModel("")
 				Expect(pm).To(Equal(emptyPm))
@@ -112,9 +128,9 @@ func RunGameTests() {
 
 			It("should return an 'empty' player model for a nonexisting player", func() {
 				game := NewGame()
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("def")).Should(Succeed())
-				Expect(game.join("ghi")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
+				Expect(joinGame(game, "ghi")).Should(Succeed())
 
 				pm := game.playerModel("jkl")
 				Expect(pm).To(Equal(emptyPm))
@@ -122,9 +138,9 @@ func RunGameTests() {
 
 			It("should start a round", func() {
 				game := NewGame()
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("def")).Should(Succeed())
-				Expect(game.join("ghi")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
+				Expect(joinGame(game, "ghi")).Should(Succeed())
 
 				Expect(game.State).To(Equal(GameStateSetup))
 				Expect(game.startRound()).Should(Succeed())
@@ -133,7 +149,7 @@ func RunGameTests() {
 
 			It("shouldn't start a round with fewer than 2 players", func() {
 				game := NewGame()
-				Expect(game.join("abc")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
 
 				Expect(game.State).To(Equal(GameStateSetup))
 				Expect(game.startRound()).ToNot(BeNil())
@@ -143,9 +159,9 @@ func RunGameTests() {
 			It("should calculate the right maxCardsPerPlayer number for different deck sizes", func() {
 				game := NewGame()
 				game.Deck = NewDoubleStandardDeck()
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("def")).Should(Succeed())
-				Expect(game.join("ghi")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
+				Expect(joinGame(game, "ghi")).Should(Succeed())
 
 				Expect(game.playerModel("abc").Game.MaxCardsPerPlayer).To(Equal(34))
 			})
@@ -161,9 +177,9 @@ func RunGameTests() {
 		Describe("Round", func() {
 			It("should rotate players after a round", func() {
 				game := NewGame()
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("def")).Should(Succeed())
-				Expect(game.join("ghi")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
+				Expect(joinGame(game, "ghi")).Should(Succeed())
 				Expect(game.setCardsPerPlayer(1)).Should(Succeed())
 
 				Expect(game.Players).To(Equal([]string{"abc", "def", "ghi"}))
@@ -186,9 +202,9 @@ func RunGameTests() {
 			It("should calculate player moods according to their chances of winning or how bad they lost", func() {
 				game := NewGame()
 				game.Deck = NewDeterministicShuffleDeck()
-				Expect(game.join("abc")).Should(Succeed())
-				Expect(game.join("def")).Should(Succeed())
-				Expect(game.join("ghi")).Should(Succeed())
+				Expect(joinGame(game, "abc")).Should(Succeed())
+				Expect(joinGame(game, "def")).Should(Succeed())
+				Expect(joinGame(game, "ghi")).Should(Succeed())
 				Expect(game.setCardsPerPlayer(4)).Should(Succeed())
 
 				Expect(game.startRound()).Should(Succeed())

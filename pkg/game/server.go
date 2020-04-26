@@ -12,7 +12,7 @@ import (
 type Responder interface {
 	GetModel() string
 	GetPlayerModel(player string) *PlayerModel
-	Join(player string) error
+	Join(player string) (string, error)
 	RemovePlayer(player string) error
 	SetCardsPerPlayer(count int) error
 	SetDeckType(deckType DeckType) error
@@ -111,11 +111,12 @@ func SetupHTTPServer(uiDirectory string, responder Responder) {
 			}
 
 			var actionErr error
+			var player string = action.Me
 			if action.GetModel != nil {
 				actionErr = nil // nothing else to do!
 				// just let the playerModel be grabbed down below
 			} else if action.Join != nil {
-				actionErr = responder.Join(action.Me)
+				player, actionErr = responder.Join(action.Me)
 			} else if action.RemovePlayer != nil {
 				actionErr = responder.RemovePlayer(action.RemovePlayer.Player)
 			} else if action.SetCardsPerPlayer != nil {
@@ -140,7 +141,7 @@ func SetupHTTPServer(uiDirectory string, responder Responder) {
 				return
 			}
 
-			pm := responder.GetPlayerModel(action.Me)
+			pm := responder.GetPlayerModel(player)
 			pmBytes, err := json.MarshalIndent(pm, "", "  ")
 			if err != nil {
 				log.Errorf("unable to serialize json: %+v", err)

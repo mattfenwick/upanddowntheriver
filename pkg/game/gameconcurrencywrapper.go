@@ -77,16 +77,17 @@ func (gcw *GameConcurrencyWrapper) SetDeckType(deckType DeckType) error {
 	return <-done
 }
 
-func (gcw *GameConcurrencyWrapper) Join(player string) error {
-	done := make(chan error)
+func (gcw *GameConcurrencyWrapper) Join(player string) (string, error) {
+	done := make(chan struct{})
+	var err error
+	var addedPlayer string
 	gcw.Actions <- &Action{"join", func() error {
-		err := gcw.Game.join(player)
-		go func() {
-			done <- err
-		}()
+		addedPlayer, err = gcw.Game.join(player)
+		close(done)
 		return err
 	}}
-	return <-done
+	<-done
+	return addedPlayer, err
 }
 
 func (gcw *GameConcurrencyWrapper) RemovePlayer(player string) error {

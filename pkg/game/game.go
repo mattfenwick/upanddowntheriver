@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 type GameState int
@@ -72,22 +73,24 @@ func (game *Game) addPlayer(player string) error {
 	}
 }
 
-func (game *Game) join(player string) error {
-	if game.State != GameStateSetup {
-		return errors.New(fmt.Sprintf("can't join as %s, in state %s", player, game.State.String()))
+func (game *Game) join(player string) (string, error) {
+	if player == "" {
+		return "", errors.New("invalid name: empty")
 	}
 	if len(player) > 20 {
 		// just take the first 20 characters so as not to get overwhelmed by excessively long names
-		player = player[:20]
-	}
-	if player == "" {
-		return errors.New("invalid name: empty")
+		shortName := player[:20]
+		log.Infof("player name <%s> too long, truncating to <%s>", player, shortName)
+		player = shortName
 	}
 	// if player's already in the game, nothing to do!
 	if game.PlayersSet[player] {
-		return nil
+		return player, nil
 	}
-	return game.addPlayer(player)
+	if game.State != GameStateSetup {
+		return "", errors.New(fmt.Sprintf("can't join as %s, in state %s", player, game.State.String()))
+	}
+	return player, game.addPlayer(player)
 }
 
 func (game *Game) removePlayer(player string) error {

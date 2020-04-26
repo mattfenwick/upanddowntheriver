@@ -725,11 +725,7 @@ Model.prototype.updateFromServer = function(ok, data) {
 
 Model.prototype.join = function(name) {
     console.log(`joining game as ${name}`);
-    if ( this.game.players.indexOf(name) >= 0 ) {
-        getMyModel(name, this.updateFromServer.bind(this));
-    } else {
-        postJoin(name, this.updateFromServer.bind(this));
-    }
+    postJoin(name, this.updateFromServer.bind(this));
 };
 
 Model.prototype.removePlayer = function(player) {
