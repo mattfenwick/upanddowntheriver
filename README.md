@@ -53,10 +53,12 @@ Run the deploy script:
 ```
 cd upanddowntheriver/deploy
 
-./deploy.sh my-fave-namespace
+NAMESPACE=my-fave-namespace
+IMAGE_TAG=v0.3.0
+./deploy.sh $NAMESPACE $IMAGE_TAG
 ```
 
-Figure out how to expose the `up-and-down-the-river` service!
+Note: this exposes an `up-and-down-the-river` service, you may want to expose it differently depending on your setup!
 
 
 
